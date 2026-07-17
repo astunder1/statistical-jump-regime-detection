@@ -23,7 +23,7 @@ dev = [
     "jumpmodels",
 ]
 data = [
-    "pandas-datareader>=0.10",
+    "yfinance>=0.2",
 ]
 hmm = [
     "hmmlearn>=0.3",
