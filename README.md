@@ -51,9 +51,12 @@ permitted only inside unit tests, never in a backtest or reported result.
 - [x] 4. `src/regimejump/online.py` — expanding standardization + one-step
       online regime decision + greedy online path runner
 - [ ] 5. `src/regimejump/jump.py` — `JumpModel` (DP recursion and fit loop
-      implemented by hand, not generated)
-- [ ] 6. `tests/test_jump.py` — correctness tests written before the
-      implementation
+      implemented by hand, not generated). Scaffolded: constructor,
+      k-means++ init, `relabel_by_feature`, `predict`, `jump_objective` are
+      done; `_dp_state_path` and `fit` are documented stubs.
+- [x] 6. `tests/test_jump.py` — correctness tests written before the
+      implementation (currently 4 failing on `NotImplementedError` by
+      design, 1 skipped `jumpmodels` gate)
 - [ ] 7. `src/regimejump/cv.py` — expanding-window walk-forward CV, lambda
       tuning
 - [ ] 8. Replication backtest of the paper's regime-based SPX de-risking
