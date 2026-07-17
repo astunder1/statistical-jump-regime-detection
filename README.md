@@ -44,8 +44,9 @@ permitted only inside unit tests, never in a backtest or reported result.
 ## Roadmap
 
 - [x] 1. Repo scaffold
-- [ ] 2. `scripts/download_data.py` — SPX/NDX/DAX daily data via Stooq,
-      cached as parquet
+- [x] 2. `scripts/download_data.py` — SPX/NDX/DAX daily data via Yahoo
+      Finance (Stooq's CSV endpoint now requires solving a client-side JS
+      challenge, so plain HTTP clients can't use it), cached as parquet
 - [ ] 3. `src/regimejump/features.py` — EWM feature engineering
 - [ ] 4. `src/regimejump/online.py` — expanding standardization + one-step
       online regime decision + greedy online path runner
