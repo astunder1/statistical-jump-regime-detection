@@ -48,7 +48,7 @@ permitted only inside unit tests, never in a backtest or reported result.
       Finance (Stooq's CSV endpoint now requires solving a client-side JS
       challenge, so plain HTTP clients can't use it), cached as parquet
 - [x] 3. `src/regimejump/features.py` — EWM feature engineering
-- [ ] 4. `src/regimejump/online.py` — expanding standardization + one-step
+- [x] 4. `src/regimejump/online.py` — expanding standardization + one-step
       online regime decision + greedy online path runner
 - [ ] 5. `src/regimejump/jump.py` — `JumpModel` (DP recursion and fit loop
       implemented by hand, not generated)
