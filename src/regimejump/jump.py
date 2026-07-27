@@ -2,7 +2,7 @@
 
 Penalized k-means over return features:
 
-    sum_t ||x_t - theta_{s_t}||^2 + lambda * sum_{t>=1} 1{s_t != s_{t-1}}
+    sum_t 0.5 * ||x_t - theta_{s_t}||^2 + lambda * sum_{t>=1} 1{s_t != s_{t-1}}
 
 Fit by coordinate descent between two steps:
 
@@ -84,7 +84,7 @@ def jump_objective(
     centroids = np.asarray(centroids, dtype=float)
     labels = np.asarray(labels)
 
-    fit_cost = np.sum((X - centroids[labels]) ** 2)
+    fit_cost = 0.5 * np.sum((X - centroids[labels]) ** 2)
     n_switches = np.sum(labels[1:] != labels[:-1])
     return float(fit_cost + jump_penalty * n_switches)
 
@@ -140,14 +140,15 @@ class JumpModel:
 
         Must find the path ``s_0, ..., s_{T-1}`` minimizing
 
-            sum_t ||x_t - theta_{s_t}||^2 + lambda * sum_{t>=1} 1{s_t != s_{t-1}}
+            sum_t 0.5 * ||x_t - theta_{s_t}||^2 + lambda * sum_{t>=1} 1{s_t != s_{t-1}}
 
         via dynamic programming:
 
-            V[0, k] = ||x_0 - theta_k||^2
-            V[t, k] = ||x_t - theta_k||^2 + min(
-                V[t-1, k],                          # stay in k
-                min_j V[t-1, j] + lambda,            # switch into k from any j
+            V[0, k] = 0.5 * ||x_0 - theta_k||^2
+
+            V[t, k] = 0.5 * ||x_t - theta_k||^2 + min(
+                V[t-1, k],
+                min_j V[t-1, j] + lambda,
             )
 
         Complexity requirement: O(T*K), not O(T*K^2) -- computing
@@ -168,17 +169,88 @@ class JumpModel:
         cost:
             The objective value achieved by ``path`` (fit cost + total
             switching penalty), for comparing restarts / convergence.
-
-        Notes
-        -----
-        Left unimplemented on purpose -- this is the core DP recursion of
-        the project and is implemented by hand.
         """
-        raise NotImplementedError(
-            "_dp_state_path is the core DP recursion of the jump model and "
-            "is implemented by hand -- see the docstring above for the "
-            "recursion and the required O(T*K) complexity."
+
+        # First, ensure proper arrays created
+        X = np.asarray(X, dtype=float)
+        centroids = np.asarray(centroids, dtype=float)
+
+        if X.ndim != 2:
+            raise ValueError("X must be a 2D array")
+
+        if centroids.ndim != 2:
+            raise ValueError("centroids must be a 2D array")
+
+        if X.shape[0] == 0:
+            raise ValueError("X must contain at least one observation")
+
+        if X.shape[1] != centroids.shape[1]:
+            raise ValueError("X and centroids must have the same number of features")
+
+        if centroids.shape[0] != self.n_states:
+            raise ValueError("centroids must contain n_states rows")
+
+        if not np.isfinite(X).all():
+            raise ValueError("X must contain only finite values")
+
+        if not np.isfinite(centroids).all():
+            raise ValueError("centroids must contain only finite values")
+
+        if not np.isfinite(self.jump_penalty) or self.jump_penalty < 0:
+            raise ValueError("jump_penalty must be finite and non-negative")
+
+        # At each date t and state k, compute observation cost
+        observation_costs = 0.5 * np.sum(
+            (X[:, None, :] - centroids[None, :, :]) ** 2,
+            axis=2,
         )
+
+        n_obs, n_states = observation_costs.shape
+
+        # value[t, k] is the minimum total cost of all paths that cover dates 0 to t
+        # and end in state k on date t
+        value = np.empty((n_obs, n_states), dtype=float)
+
+        # predecessor[t, k] records the state at t - 1 that leads
+        # to the cheapest partial path ending in state k at time t.
+        predecessor = np.empty((n_obs, n_states), dtype=int)
+
+        # Initialization at first date
+        value[0] = observation_costs[0]
+        predecessor[0] = -1
+
+        # Begin the recurrence relation
+        for t in range(1, n_obs):
+            previous_values = value[t - 1]
+
+            best_previous_state = int(np.argmin(previous_values))
+            best_switch_cost = (
+                previous_values[best_previous_state]
+                + self.jump_penalty
+            )
+
+            for k in range(n_states):
+                stay_cost = previous_values[k]
+
+                if stay_cost <= best_switch_cost:
+                    transition_cost = stay_cost
+                    predecessor[t, k] = k
+                else:
+                    transition_cost = best_switch_cost
+                    predecessor[t, k] = best_previous_state
+
+                value[t, k] = observation_costs[t, k] + transition_cost
+
+        last_state = int(np.argmin(value[-1]))
+        best_cost = float(value[-1, last_state])
+
+        # Backtrack to determine states
+        path = np.empty(n_obs, dtype=int)
+        path[-1] = last_state
+        for t in range(n_obs - 1, 0, -1):
+            path[t - 1] = predecessor[t, path[t]]
+
+        return path, best_cost
 
     def fit(self, X: np.ndarray) -> "JumpModel":
         """Fit the jump model to ``X`` by coordinate descent.

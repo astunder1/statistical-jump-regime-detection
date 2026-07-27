@@ -10,6 +10,8 @@ number) purely to keep these unit tests simple and self-contained.
 
 from __future__ import annotations
 
+from itertools import product
+
 import numpy as np
 import pytest
 
@@ -146,3 +148,169 @@ def test_matches_jumpmodels_reference():
     # agreement = np.mean(ours.labels_ == reference.labels_)
     # assert agreement > 0.95
     raise NotImplementedError("wire up the jumpmodels reference comparison")
+
+
+def test_dp_simple_switch():
+    X = np.array([
+        [0.0],
+        [1.0],
+        [9.0],
+        [10.0],
+    ])
+
+    centroids = np.array([
+        [0.0],
+        [10.0],
+    ])
+
+    model = JumpModel(n_states=2, jump_penalty=4.0)
+    path, cost = model._dp_state_path(X, centroids)
+
+    expected_path = np.array([0, 0, 1, 1])
+    expected_cost = 5.0
+
+    np.testing.assert_array_equal(path, expected_path)
+    assert cost == pytest.approx(expected_cost)
+
+
+def test_dp_zero_penalty_chooses_nearest_centroid():
+    X = np.array([
+        [0.0],
+        [9.0],
+        [1.0],
+        [10.0],
+    ])
+
+    centroids = np.array([
+        [0.0],
+        [10.0],
+    ])
+
+    model = JumpModel(n_states=2, jump_penalty=0.0)
+    path, _ = model._dp_state_path(X, centroids)
+
+    expected_path = np.array([0, 1, 0, 1])
+    np.testing.assert_array_equal(path, expected_path)
+
+
+def test_dp_large_penalty_prevents_switching():
+    X = np.array([
+        [0.0],
+        [1.0],
+        [9.0],
+        [10.0],
+    ])
+
+    centroids = np.array([
+        [0.0],
+        [10.0],
+    ])
+
+    model = JumpModel(n_states=2, jump_penalty=1_000_000.0)
+    path, _ = model._dp_state_path(X, centroids)
+
+    assert np.all(path == path[0])
+
+
+def test_dp_reported_cost_matches_objective():
+    rng = np.random.default_rng(123)
+    X = rng.normal(size=(20, 3))
+    centroids = rng.normal(size=(2, 3))
+    penalty = 2.5
+
+    model = JumpModel(n_states=2, jump_penalty=penalty)
+    path, cost = model._dp_state_path(X, centroids)
+
+    independently_calculated = jump_objective(
+        X,
+        centroids,
+        path,
+        penalty,
+    )
+
+    assert cost == pytest.approx(independently_calculated)
+
+
+def brute_force_best_cost(
+    X: np.ndarray,
+    centroids: np.ndarray,
+    jump_penalty: float,
+) -> float:
+    n_obs = len(X)
+    n_states = len(centroids)
+    best_cost = np.inf
+
+    for candidate in product(range(n_states), repeat=n_obs):
+        path = np.asarray(candidate, dtype=int)
+
+        cost = jump_objective(
+            X,
+            centroids,
+            path,
+            jump_penalty,
+        )
+
+        best_cost = min(best_cost, cost)
+
+    return float(best_cost)
+
+
+@pytest.mark.parametrize("seed", range(20))
+def test_dp_matches_brute_force(seed):
+    rng = np.random.default_rng(seed)
+
+    X = rng.normal(size=(6, 2))
+    centroids = rng.normal(size=(3, 2))
+    penalty = float(rng.uniform(0.0, 5.0))
+
+    model = JumpModel(
+        n_states=3,
+        jump_penalty=penalty,
+    )
+
+    path, dp_cost = model._dp_state_path(X, centroids)
+
+    brute_force_cost = brute_force_best_cost(
+        X,
+        centroids,
+        penalty,
+    )
+
+    assert dp_cost == pytest.approx(brute_force_cost)
+
+    assert jump_objective(
+        X,
+        centroids,
+        path,
+        penalty,
+    ) == pytest.approx(brute_force_cost)
+
+
+def test_dp_rejects_negative_penalty():
+    X = np.array([[0.0], [1.0]])
+    centroids = np.array([[0.0], [1.0]])
+
+    model = JumpModel(n_states=2, jump_penalty=-1.0)
+
+    with pytest.raises(ValueError, match="jump_penalty"):
+        model._dp_state_path(X, centroids)
+
+
+def test_dp_rejects_empty_X():
+    X = np.empty((0, 1))
+    centroids = np.array([[0.0], [1.0]])
+
+    model = JumpModel(n_states=2)
+
+    with pytest.raises(ValueError, match="at least one observation"):
+        model._dp_state_path(X, centroids)
+
+
+def test_dp_rejects_nan():
+    X = np.array([[0.0], [np.nan]])
+    centroids = np.array([[0.0], [1.0]])
+
+    model = JumpModel(n_states=2)
+
+    with pytest.raises(ValueError, match="finite"):
+        model._dp_state_path(X, centroids)
