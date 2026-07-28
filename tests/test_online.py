@@ -63,14 +63,14 @@ def test_expanding_standardize_series_input():
 def test_stays_when_improvement_below_penalty():
     centroids = np.array([[0.0, 0.0], [1.0, 0.0]])
     x = np.array([0.6, 0.0])  # dist to c0 = 0.36, dist to c1 = 0.16 -> improves by 0.20
-    new_state = online_state_decision(x, centroids, prev_state=0, jump_penalty=0.5)
+    new_state = online_state_decision(x, centroids, prev_state=0, jump_penalty=0.25)
     assert new_state == 0
 
 
 def test_switches_when_improvement_exceeds_penalty():
     centroids = np.array([[0.0, 0.0], [1.0, 0.0]])
-    x = np.array([0.6, 0.0])  # improvement of 0.20 over jump_penalty=0.1
-    new_state = online_state_decision(x, centroids, prev_state=0, jump_penalty=0.1)
+    x = np.array([0.6, 0.0])  # improvement of 0.20 over jump_penalty=0.05
+    new_state = online_state_decision(x, centroids, prev_state=0, jump_penalty=0.05)
     assert new_state == 1
 
 
@@ -85,8 +85,8 @@ def test_boundary_is_strict_inequality():
     # Improvement exactly equal to jump_penalty should NOT trigger a switch
     # (must be strictly smaller by more than the penalty).
     centroids = np.array([[0.0, 0.0], [1.0, 0.0]])
-    x = np.array([0.6, 0.0])  # dist0=0.36, dist1=0.16, improvement=0.20
-    new_state = online_state_decision(x, centroids, prev_state=0, jump_penalty=0.20)
+    x = np.array([0.6, 0.0])  # dist0=0.36, dist1=0.16, improvement=0.10
+    new_state = online_state_decision(x, centroids, prev_state=0, jump_penalty=0.10)
     assert new_state == 0
 
 

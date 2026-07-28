@@ -56,7 +56,7 @@ def online_state_decision(
     x = np.asarray(x, dtype=float)
     centroids = np.asarray(centroids, dtype=float)
 
-    dists = np.sum((centroids - x) ** 2, axis=1)
+    dists = 0.5 * np.sum((centroids - x) ** 2, axis=1)
     best = int(np.argmin(dists))
 
     if best == prev_state:
