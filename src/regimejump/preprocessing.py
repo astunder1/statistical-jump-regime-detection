@@ -32,7 +32,7 @@ def standardize_from_training_window(
 
     if not np.isfinite(eps) or eps <= 0:
         raise ValueError("eps must be finite and positive")
-    
+
     mean = training.mean()
     std = training.std(ddof=0).clip(lower=eps)
 
