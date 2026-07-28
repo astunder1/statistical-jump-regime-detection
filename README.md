@@ -116,5 +116,5 @@ All reported out-of-sample results will follow three rules:
 Shu, Y., Yu, C., & Mulvey, J. M. (2024). Downside risk reduction using regime-switching signals: a statistical jump model approach. *Journal of Asset Management*, 25, 493–507.  
 https://doi.org/10.1057/s41260-024-00376-x
 
-Nystrup, P., Lindström, E., & Madsen, H. (2020). Learning hidden Markov models with persistent states by penalizing jumps. *Expert Systems with Applications*, 150, 113307.  
+Nystrup, P., Lindström, E., & Madsen, H. (2020). Learning hidden Markov models with persistent states by penalizing jumps. *Expert Systems with Applications*, 150, 113307.
 https://doi.org/10.1016/j.eswa.2020.113307
