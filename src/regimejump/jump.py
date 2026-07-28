@@ -252,6 +252,57 @@ class JumpModel:
 
         return path, best_cost
 
+
+    def _update_centroids(
+            self,
+            X: np.ndarray,
+            labels: np.ndarray,
+            old_centroids: np.ndarray,
+    ) -> np.ndarray:
+        """Update centroids from fixed state assignment
+        Nonempty states updated to mean of their assigned observations.
+        Empty states temporarily left at previous centroid.
+        """
+
+        # Ensure data types are correct
+        X = np.asarray(X, dtype=float)
+        labels = np.asarray(labels, dtype=int)
+        old_centroids = np.asarray(old_centroids, dtype=float)
+
+        new_centroids = old_centroids.copy()
+
+        # First, update every nonempty state
+        for k in range(self.n_states):
+            members = X[labels == k]
+
+            if len(members) > 0:
+                new_centroids[k] = members.mean(axis=0)
+
+        # Measure each observation against its updated assigned centroid
+        residuals = 0.5 * np.sum(
+            (X - new_centroids[labels]) ** 2,
+            axis=1,
+        )
+
+        # Reseed empty states using poorly fitted observations
+        empty_states = [
+            k
+            for k in range(self.n_states)
+            if not np.any(labels == k)
+        ]
+
+        available = residuals.copy()
+
+        for k in empty_states:
+            replacement_index = int(np.argmax(available))
+            new_centroids[k] = X[replacement_index]
+
+            # Avoid using the same observation for multiple empty states.
+            available[replacement_index] = -np.inf
+
+        return new_centroids
+
+
     def fit(self, X: np.ndarray) -> "JumpModel":
         """Fit the jump model to ``X`` by coordinate descent.
 
@@ -280,17 +331,37 @@ class JumpModel:
             (T, n_features) standardized feature matrix. Standardization
             is the caller's responsibility (see :mod:`regimejump.online`
             for the look-ahead-free version).
-
-        Notes
-        -----
-        Left unimplemented on purpose -- this is the core fitting loop of
-        the project and is implemented by hand.
         """
-        raise NotImplementedError(
-            "fit is the core coordinate-descent loop of the jump model and "
-            "is implemented by hand -- see the docstring above for the "
-            "expected structure."
-        )
+        X = np.asarray(X, dtype=float)
+
+        if X.ndim != 2:
+            raise ValueError("X must be a 2D array")
+
+        if X.shape[0] == 0:
+            raise ValueError("X must contain at least one observation")
+
+        if X.shape[1] == 0:
+            raise ValueError("X must contain at least one feature")
+
+        if not np.isfinite(X).all():
+            raise ValueError("X must contain only finite values")
+
+        if not isinstance(self.n_states, int) or self.n_states < 1:
+            raise ValueError("n_states must be a positive integer")
+
+        if self.n_states > X.shape[0]:
+            raise ValueError("n_states cannot exceed the number of observations")
+
+        if not np.isfinite(self.jump_penalty) or self.jump_penalty < 0:
+            raise ValueError("jump_penalty must be finite and non-negative")
+
+        if not isinstance(self.max_iter, int) or self.max_iter < 1:
+            raise ValueError("max_iter must be a positive integer")
+
+        if not isinstance(self.n_init, int) or self.n_init < 1:
+            raise ValueError("n_init must be a positive integer")
+
+        raise NotImplementedError("fit loop not implemented yet")
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Assign the optimal (batch, non-causal) state path for ``X``.

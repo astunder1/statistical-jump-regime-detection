@@ -314,3 +314,97 @@ def test_dp_rejects_nan():
 
     with pytest.raises(ValueError, match="finite"):
         model._dp_state_path(X, centroids)
+
+
+def test_update_centroids_uses_state_means():
+    X = np.array([
+        [0.0, 2.0],
+        [2.0, 4.0],
+        [8.0, 10.0],
+        [10.0, 12.0],
+    ])
+
+    labels = np.array([0, 0, 1, 1])
+
+    old_centroids = np.array([
+        [-5.0, -5.0],
+        [20.0, 20.0],
+    ])
+
+    model = JumpModel(n_states=2)
+
+    updated = model._update_centroids(
+        X,
+        labels,
+        old_centroids,
+    )
+
+    expected = np.array([
+        [1.0, 3.0],
+        [9.0, 11.0],
+    ])
+
+    np.testing.assert_allclose(updated, expected)
+
+
+def test_update_centroids_does_not_modify_old_centroids():
+    X = np.array([
+        [0.0],
+        [2.0],
+        [8.0],
+        [10.0],
+    ])
+    labels = np.array([0, 0, 1, 1])
+    old_centroids = np.array([[-5.0], [20.0]])
+    original = old_centroids.copy()
+
+    model = JumpModel(n_states=2)
+    model._update_centroids(X, labels, old_centroids)
+
+    np.testing.assert_array_equal(old_centroids, original)
+
+
+def test_update_centroids_reseeds_empty_state_with_worst_fitted_point():
+    X = np.array([
+        [0.0],
+        [1.0],
+        [10.0],
+    ])
+
+    # Every observation is currently assigned to state 0.
+    labels = np.array([0, 0, 0])
+
+    old_centroids = np.array([
+        [0.0],
+        [50.0],
+    ])
+
+    model = JumpModel(n_states=2)
+    updated = model._update_centroids(X, labels, old_centroids)
+
+    # State 0 is updated to the mean: (0 + 1 + 10) / 3.
+    assert updated[0, 0] == pytest.approx(11.0 / 3.0)
+
+    # Relative to that mean, X=10 is the worst-fitted observation.
+    assert updated[1, 0] == pytest.approx(10.0)
+
+
+def test_update_centroids_uses_distinct_reseeds():
+    X = np.array([
+        [0.0],
+        [1.0],
+        [10.0],
+    ])
+    labels = np.array([0, 0, 0])
+
+    old_centroids = np.array([
+        [0.0],
+        [50.0],
+        [60.0],
+    ])
+
+    model = JumpModel(n_states=3)
+    updated = model._update_centroids(X, labels, old_centroids)
+
+    # Empty states should receive different observations.
+    assert not np.array_equal(updated[1], updated[2])
