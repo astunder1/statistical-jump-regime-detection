@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 
 from regimejump.jump import JumpModel, jump_objective
-from regimejump.online import greedy_online_path
+from regimejump.online import greedy_online_path, rolling_dp_online_path
 
 
 def n_switches(labels: np.ndarray) -> int:
@@ -578,4 +578,70 @@ def test_relabel_by_cumulative_return():
     np.testing.assert_array_equal(
         model.centroids_,
         np.array([[20.0], [10.0]]),
+    )
+
+
+def test_online_states_match_jumpmodels_reference():
+    from jumpmodels.jump import JumpModel as ReferenceJumpModel
+
+    returns, _ = simulate_two_regime_returns()
+    X = zscore(simple_features_from_returns(returns))
+
+    ours = JumpModel(
+        n_states=2,
+        jump_penalty=10.0,
+        max_iter=50,
+        n_init=10,
+        random_state=0,
+    ).fit(X)
+
+    ours.relabel_by_cumulative_return(returns)
+
+    reference = ReferenceJumpModel(
+        n_components=2,
+        jump_penalty=10.0,
+        cont=False,
+        mode_loss=True,
+        max_iter=50,
+        n_init=10,
+        random_state=0,
+    ).fit(
+        X,
+        ret_ser=returns,
+        sort_by="cumret",
+    )
+
+    # Confirm state ordering and centroids match before comparing inference.
+    np.testing.assert_allclose(
+        ours.centroids_,
+        reference.centers_,
+    )
+
+    # Create a nontrivial test sequence that moves between both centroids.
+    rng = np.random.default_rng(9)
+
+    X_test = np.vstack([
+        ours.centroids_[0] + rng.normal(0.0, 0.1, size=(20, X.shape[1])),
+        ours.centroids_[1] + rng.normal(0.0, 0.1, size=(30, X.shape[1])),
+        ours.centroids_[0] + rng.normal(0.0, 0.1, size=(20, X.shape[1])),
+    ])
+
+    ours_online = rolling_dp_online_path(
+        X_test,
+        ours.centroids_,
+        jump_penalty=10.0,
+        lookback=len(X_test),
+    )
+
+    reference_online = np.asarray(
+        reference.predict_online(X_test),
+        dtype=int,
+    )
+
+    # Ensure this is not a trivial all-one-state comparison.
+    assert np.sum(ours_online[1:] != ours_online[:-1]) > 0
+
+    np.testing.assert_array_equal(
+        ours_online,
+        reference_online,
     )
