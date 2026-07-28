@@ -455,3 +455,40 @@ class JumpModel:
         self.centroids_ = self.centroids_[order]
         self.labels_ = new_index_of_old[self.labels_]
         return self
+
+    def relabel_by_cumulative_return(
+        self,
+        returns: np.ndarray,
+    ) -> "JumpModel":
+        """Relabel states by decreasing cumulative return."""
+        if self.centroids_ is None or self.labels_ is None:
+            raise RuntimeError("JumpModel must be fitted before relabeling")
+
+        returns = np.asarray(returns, dtype=float)
+
+        if returns.ndim != 1:
+            raise ValueError("returns must be one-dimensional")
+
+        if len(returns) != len(self.labels_):
+            raise ValueError("returns and labels must have the same length")
+
+        if not np.isfinite(returns).all():
+            raise ValueError("returns must contain only finite values")
+
+        cumulative_returns = np.full(self.n_states, -np.inf)
+
+        for k in range(self.n_states):
+            members = self.labels_ == k
+
+            if np.any(members):
+                cumulative_returns[k] = returns[members].sum()
+
+        order = np.argsort(-cumulative_returns)
+
+        new_index_of_old = np.empty_like(order)
+        new_index_of_old[order] = np.arange(self.n_states)
+
+        self.centroids_ = self.centroids_[order]
+        self.labels_ = new_index_of_old[self.labels_]
+
+        return self

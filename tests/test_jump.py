@@ -560,3 +560,22 @@ def test_fitted_labels_match_dp_path_for_fitted_centroids():
 
     np.testing.assert_array_equal(model.labels_, expected_labels)
     assert model.inertia_ == pytest.approx(expected_cost)
+
+
+def test_relabel_by_cumulative_return():
+    model = JumpModel(n_states=2)
+    model.centroids_ = np.array([[10.0], [20.0]])
+    model.labels_ = np.array([0, 0, 1, 1])
+
+    returns = np.array([-0.03, -0.02, 0.01, 0.02])
+
+    model.relabel_by_cumulative_return(returns)
+
+    np.testing.assert_array_equal(
+        model.labels_,
+        np.array([1, 1, 0, 0]),
+    )
+    np.testing.assert_array_equal(
+        model.centroids_,
+        np.array([[20.0], [10.0]]),
+    )
