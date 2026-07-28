@@ -130,24 +130,37 @@ def test_dp_path_beats_or_matches_greedy_path(random_features):
 # ---- (e) gate against the `jumpmodels` PyPI reference implementation ------
 
 
-@pytest.mark.skip(
-    reason="Enable once JumpModel.fit is implemented, to gate against the "
-    "jumpmodels reference implementation."
-)
 def test_matches_jumpmodels_reference():
-    from jumpmodels.jump import JumpModel as ReferenceJumpModel  # noqa: F401
+    from jumpmodels.jump import JumpModel as ReferenceJumpModel
 
-    returns, true_labels = simulate_two_regime_returns()
+    returns, _ = simulate_two_regime_returns()
     X = zscore(simple_features_from_returns(returns))
 
-    ours = JumpModel(n_states=2, jump_penalty=10.0, n_init=10, random_state=0).fit(X)
-    ours.relabel_by_feature(X, feature_idx=0)
+    ours = JumpModel(
+        n_states=2,
+        jump_penalty=10.0,
+        max_iter=50,
+        n_init=10,
+        random_state=0,
+    ).fit(X)
 
-    # Placeholder comparison -- fill in once the reference API is wired up:
-    # reference = ReferenceJumpModel(...).fit(X)
-    # agreement = np.mean(ours.labels_ == reference.labels_)
-    # assert agreement > 0.95
-    raise NotImplementedError("wire up the jumpmodels reference comparison")
+    reference = ReferenceJumpModel(
+        n_components=2,
+        jump_penalty=10.0,
+        cont=False,
+        mode_loss=True,
+        max_iter=50,
+        n_init=10,
+        random_state=0,
+    ).fit(X, sort_by=None)
+
+    # State numbers are arbitrary, so compare both possible alignments.
+    direct_agreement = np.mean(ours.labels_ == reference.labels_)
+    reversed_agreement = np.mean(ours.labels_ == (1 - reference.labels_))
+    agreement = max(direct_agreement, reversed_agreement)
+
+    assert agreement > 0.99
+    assert ours.inertia_ == pytest.approx(reference.val_)
 
 
 def test_dp_simple_switch():
