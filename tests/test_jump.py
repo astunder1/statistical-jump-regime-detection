@@ -408,3 +408,142 @@ def test_update_centroids_uses_distinct_reseeds():
 
     # Empty states should receive different observations.
     assert not np.array_equal(updated[1], updated[2])
+
+@pytest.mark.parametrize(
+    ("X", "message"),
+    [
+        (np.array([1.0, 2.0]), "2D"),
+        (np.empty((0, 2)), "at least one observation"),
+        (np.empty((2, 0)), "at least one feature"),
+        (np.array([[0.0], [np.nan]]), "finite"),
+    ],
+)
+def test_fit_rejects_invalid_X(X, message):
+    model = JumpModel()
+
+    with pytest.raises(ValueError, match=message):
+        model.fit(X)
+
+
+def test_fit_rejects_more_states_than_observations():
+    X = np.array([[0.0], [1.0]])
+    model = JumpModel(n_states=3)
+
+    with pytest.raises(ValueError, match="cannot exceed"):
+        model.fit(X)
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"n_states": 0}, "n_states"),
+        ({"jump_penalty": -1.0}, "jump_penalty"),
+        ({"max_iter": 0}, "max_iter"),
+        ({"n_init": 0}, "n_init"),
+    ],
+)
+def test_fit_rejects_invalid_parameters(kwargs, message):
+    X = np.array([[0.0], [1.0]])
+    model = JumpModel(**kwargs)
+
+    with pytest.raises(ValueError, match=message):
+        model.fit(X)
+
+def test_fit_sets_expected_attributes():
+    X = np.array([
+        [0.0],
+        [0.2],
+        [0.1],
+        [9.9],
+        [10.0],
+        [10.1],
+    ])
+
+    model = JumpModel(
+        n_states=2,
+        jump_penalty=1.0,
+        n_init=1,
+        random_state=0,
+    ).fit(X)
+
+    assert model.centroids_.shape == (2, 1)
+    assert model.labels_.shape == (len(X),)
+    assert model.n_iter_ >= 1
+    assert model.n_iter_ <= model.max_iter
+    assert np.isfinite(model.inertia_)
+
+    assert model.inertia_ == pytest.approx(
+        jump_objective(
+            X,
+            model.centroids_,
+            model.labels_,
+            model.jump_penalty,
+        )
+    )
+
+
+def test_single_restart_fit_is_reproducible():
+    rng = np.random.default_rng(123)
+    X = rng.normal(size=(50, 2))
+
+    model_a = JumpModel(
+        n_states=2,
+        jump_penalty=2.0,
+        n_init=1,
+        random_state=7,
+    ).fit(X)
+
+    model_b = JumpModel(
+        n_states=2,
+        jump_penalty=2.0,
+        n_init=1,
+        random_state=7,
+    ).fit(X)
+
+    np.testing.assert_allclose(
+        model_a.centroids_,
+        model_b.centroids_,
+    )
+    np.testing.assert_array_equal(
+        model_a.labels_,
+        model_b.labels_,
+    )
+    assert model_a.inertia_ == pytest.approx(model_b.inertia_)
+
+def test_multiple_restarts_do_not_worsen_objective():
+    rng = np.random.default_rng(321)
+    X = rng.normal(size=(100, 3))
+
+    model_one = JumpModel(
+        n_states=3,
+        jump_penalty=2.0,
+        n_init=1,
+        random_state=10,
+    ).fit(X)
+
+    model_many = JumpModel(
+        n_states=3,
+        jump_penalty=2.0,
+        n_init=5,
+        random_state=10,
+    ).fit(X)
+
+    assert model_many.inertia_ <= model_one.inertia_ + 1e-12
+
+def test_fitted_labels_match_dp_path_for_fitted_centroids():
+    rng = np.random.default_rng(456)
+    X = rng.normal(size=(100, 3))
+
+    model = JumpModel(
+        n_states=3,
+        jump_penalty=2.0,
+        n_init=5,
+        random_state=0,
+    ).fit(X)
+
+    expected_labels, expected_cost = model._dp_state_path(
+        X,
+        model.centroids_,
+    )
+
+    np.testing.assert_array_equal(model.labels_, expected_labels)
+    assert model.inertia_ == pytest.approx(expected_cost)

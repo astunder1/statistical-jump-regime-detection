@@ -10,12 +10,6 @@ Fit by coordinate descent between two steps:
        features assigned to it ("centroid step");
     2. given centroids, the optimal state path is found by dynamic
        programming ("state step").
-
-``JumpModel._dp_state_path`` and ``JumpModel.fit`` are intentionally left
-unimplemented here -- they are the core of the project and are implemented
-by hand, not generated. Everything else (construction, k-means++
-initialization, relabeling, prediction on top of fitted centroids) is
-ordinary plumbing and is provided.
 """
 
 from __future__ import annotations
@@ -306,8 +300,8 @@ class JumpModel:
     def fit(self, X: np.ndarray) -> "JumpModel":
         """Fit the jump model to ``X`` by coordinate descent.
 
-        Expected structure (standard jump-model fitting, Nystrup et al.
-        2020):
+        Coordinate descent is run from ``n_init`` k-means++ initializations.
+        The solution with the lowest final objective is retained.
 
         1. For each of ``n_init`` restarts (use ``kmeans_plusplus_init``
            for initial centroids, seeded from ``self.random_state``):
@@ -361,7 +355,62 @@ class JumpModel:
         if not isinstance(self.n_init, int) or self.n_init < 1:
             raise ValueError("n_init must be a positive integer")
 
-        raise NotImplementedError("fit loop not implemented yet")
+        rng = np.random.default_rng(self.random_state)
+
+        best_centroids = None
+        best_labels = None
+        best_n_iter = None
+        best_cost = np.inf
+
+        for _ in range(self.n_init):
+            centroids = kmeans_plusplus_init(
+                X,
+                n_states=self.n_states,
+                rng=rng,
+            )
+
+            previous_labels = None
+
+            for n_iter in range(1, self.max_iter + 1):
+                labels, _ = self._dp_state_path(X, centroids)
+
+                updated_centroids = self._update_centroids(
+                    X,
+                    labels,
+                    centroids,
+                )
+
+                labels_unchanged = (
+                    previous_labels is not None
+                    and np.array_equal(labels, previous_labels)
+                )
+
+                centroids = updated_centroids
+
+                if labels_unchanged:
+                    break
+
+                previous_labels = labels.copy()
+
+            restart_cost = jump_objective(
+                X,
+                centroids,
+                labels,
+                self.jump_penalty,
+            )
+
+            if restart_cost < best_cost:
+                best_cost = restart_cost
+                best_centroids = centroids.copy()
+                best_labels = labels.copy()
+                best_n_iter = n_iter
+
+        self.centroids_ = best_centroids
+        self.labels_ = best_labels
+        self.n_iter_ = best_n_iter
+        self.inertia_ = float(best_cost)
+
+        return self
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Assign the optimal (batch, non-causal) state path for ``X``.
