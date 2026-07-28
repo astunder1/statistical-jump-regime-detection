@@ -18,6 +18,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from regimejump.jump import JumpModel
 
 def expanding_standardize(
     data: pd.DataFrame | pd.Series,
@@ -108,3 +109,39 @@ def greedy_online_path(
         path[t] = online_state_decision(X[t], centroids, path[t - 1], jump_penalty)
 
     return path
+
+
+def rolling_dp_online_path(
+    X: np.ndarray,
+    centroids: np.ndarray,
+    jump_penalty: float,
+    lookback: int = 3000,
+) -> np.ndarray:
+    """Infer each daily state using DP over the trailing feature window."""
+    X = np.asarray(X, dtype=float)
+    centroids = np.asarray(centroids, dtype=float)
+
+    if not isinstance(lookback, int) or lookback < 1:
+        raise ValueError("lookback must be a positive integer")
+
+    if X.ndim != 2 or centroids.ndim != 2:
+        raise ValueError("X and centroids must be 2D arrays")
+
+    if X.shape[1] != centroids.shape[1]:
+        raise ValueError("X and centroids must have the same number of features")
+
+    states = np.empty(len(X), dtype=int)
+
+    model = JumpModel(
+        n_states=len(centroids),
+        jump_penalty=jump_penalty,
+    )
+
+    for t in range(len(X)):
+        start = max(0, t - lookback + 1)
+        window = X[start : t + 1]
+
+        path, _ = model._dp_state_path(window, centroids)
+        states[t] = path[-1]
+
+    return states

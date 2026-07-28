@@ -2,10 +2,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from regimejump.jump import JumpModel
 from regimejump.online import (
     expanding_standardize,
     greedy_online_path,
     online_state_decision,
+    rolling_dp_online_path,
 )
 
 
@@ -131,3 +133,47 @@ def test_empty_input_returns_empty_path():
     centroids = np.array([[0.0, 0.0], [1.0, 1.0]])
     path = greedy_online_path(np.empty((0, 2)), centroids, jump_penalty=1.0)
     assert path.shape == (0,)
+
+def test_rolling_dp_matches_direct_window_calculation():
+    rng = np.random.default_rng(10)
+    X = rng.normal(size=(20, 2))
+    centroids = rng.normal(size=(2, 2))
+    penalty = 1.5
+    lookback = 5
+
+    states = rolling_dp_online_path(
+        X,
+        centroids,
+        penalty,
+        lookback,
+    )
+
+    model = JumpModel(n_states=2, jump_penalty=penalty)
+
+    for t in range(len(X)):
+        start = max(0, t - lookback + 1)
+        expected_path, _ = model._dp_state_path(
+            X[start : t + 1],
+            centroids,
+        )
+        assert states[t] == expected_path[-1]
+
+
+def test_rolling_dp_is_causal():
+    rng = np.random.default_rng(11)
+    X = rng.normal(size=(30, 2))
+    centroids = rng.normal(size=(2, 2))
+
+    original = rolling_dp_online_path(X, centroids, 2.0, lookback=10)
+
+    changed = X.copy()
+    changed[20:] += 1000.0
+
+    perturbed = rolling_dp_online_path(
+        changed,
+        centroids,
+        2.0,
+        lookback=10,
+    )
+
+    np.testing.assert_array_equal(original[:20], perturbed[:20])
