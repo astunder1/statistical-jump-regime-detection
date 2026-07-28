@@ -24,6 +24,7 @@ dev = [
 ]
 data = [
     "yfinance>=0.2",
+    "pyarrow>=14",
 ]
 hmm = [
     "hmmlearn>=0.3",

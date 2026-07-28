@@ -20,10 +20,9 @@ import yfinance as yf
 
 TICKERS = {
     "SPX": "^GSPC",
-    "NDX": "^NDX",
     "DAX": "^GDAXI",
+    "NIKKEI": "^N225",
 }
-
 
 def fetch_one(symbol: str, start: str, end: str) -> pd.DataFrame:
     """Fetch one Yahoo Finance series and return it ascending by date, deduplicated."""
