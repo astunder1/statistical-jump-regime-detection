@@ -23,7 +23,7 @@ TEST_END = "2023-12-31"
 
 def main() -> None:
     regime_data = pd.read_csv(
-        "data/spx_excess_feature_states_lambda50.csv",
+        "data/spx_selected_states.csv",
         parse_dates=["date"],
         index_col="date",
     )
