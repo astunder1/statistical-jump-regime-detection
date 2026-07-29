@@ -18,6 +18,10 @@ from pathlib import Path
 import pandas as pd
 import yfinance as yf
 
+FRED_DTB3_URL = (
+    "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTB3"
+)
+
 TICKERS = {
     "SPX": "^GSPC",
     "DAX": "^GDAXI",
@@ -52,6 +56,35 @@ def download_all(out_dir: Path, start: str, end: str, force: bool) -> dict[str, 
     return written
 
 
+def download_risk_free_rate(
+    start: str,
+    end: str,
+) -> pd.DataFrame:
+    """Download the US three-month Treasury bill rate from FRED."""
+
+    rates = pd.read_csv(
+        FRED_DTB3_URL,
+        na_values=".",
+    )
+
+    rates = rates.rename(
+        columns={
+            "observation_date": "date",
+            "DTB3": "annual_discount_yield_pct",
+        }
+    )
+
+    rates["date"] = pd.to_datetime(rates["date"])
+
+    rates = rates.set_index("date").sort_index()
+    rates = rates.loc[start:end]
+
+    if rates.empty:
+        raise ValueError("No risk-free observations were downloaded")
+
+    return rates
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=Path("data"))
@@ -61,6 +94,13 @@ def main() -> None:
     args = parser.parse_args()
 
     download_all(args.out, start=args.start, end=args.end, force=args.force)
+
+    risk_free = download_risk_free_rate(start=args.start, end=args.end)
+
+    risk_free_path = args.out / "us_tbill_3m.parquet"
+    risk_free.to_parquet(risk_free_path)
+
+    print(f"Saved risk-free rates to {risk_free_path}")
 
 
 if __name__ == "__main__":
