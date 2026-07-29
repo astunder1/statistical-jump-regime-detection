@@ -29,7 +29,11 @@ def risk_free_returns_for_dates(
 ) -> pd.Series:
     """Create daily risk-free returns for the requested trading dates."""
 
-    annual_discount_yield_pct = annual_discount_yield_pct.sort_index()
+    annual_discount_yield_pct = (
+        annual_discount_yield_pct
+        .sort_index()
+        .ffill()
+    )
 
     aligned_yield = annual_discount_yield_pct.reindex(
         dates,

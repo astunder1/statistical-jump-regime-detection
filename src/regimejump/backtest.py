@@ -28,7 +28,11 @@ def delayed_equity_weight(
     if not valid_states.isin([0,1]).all():
         raise ValueError("States must be either 0 or 1")
 
-    signal_weight = states.eq(0).astype("Float64")
+    signal_weight = states.map({
+        0: 1.0,
+        1: 0.0,
+    }).astype("Float64")
+
     equity_weight = signal_weight.shift(delay)
     equity_weight.name = "equity_weight"
 

@@ -188,3 +188,20 @@ def test_run_zero_one_backtest_end_to_end():
     assert result.loc[index[4], "transaction_cost"] == 0.001
     assert result.loc[index[4], "gross_return"] == 0.001
     assert result.loc[index[4], "net_return"] == 0.0
+
+
+def test_delayed_weight_preserves_missing_states():
+    states = pd.Series(
+        [pd.NA, pd.NA, 0, 1],
+        dtype="Int64",
+    )
+
+    result = delayed_equity_weight(states, delay=0)
+
+    expected = pd.Series(
+        [pd.NA, pd.NA, 1.0, 0.0],
+        dtype="Float64",
+        name="equity_weight",
+    )
+
+    pd.testing.assert_series_equal(result, expected)

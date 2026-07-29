@@ -24,6 +24,7 @@ FRED_DTB3_URL = (
 
 TICKERS = {
     "SPX": "^GSPC",
+    "SPX_TR": "^SP500TR",
     "DAX": "^GDAXI",
     "NIKKEI": "^N225",
 }
