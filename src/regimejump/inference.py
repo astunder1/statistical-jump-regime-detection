@@ -18,15 +18,39 @@ def six_month_refit_states(
     random_state: int | None = 0,
     verbose: bool = False,
 ) -> tuple[pd.Series, list[pd.Timestamp]]:
-    """Generate online states with model refitting every six months.
+    """Generate causal states with model refitting every six months.
 
-    At each refit:
+    At each refit, the function uses the latest ``training_length``
+    observations to fit the standardization parameters, centroids, and
+    state ordering. These fitted values remain fixed for the following
+    six-month block. Daily states are inferred using dynamic programming
+    over the trailing feature window.
 
-    1. Use the latest ``training_length`` feature observations.
-    2. Fit preprocessing on that training window.
-    3. Fit and relabel the jump model.
-    4. Hold preprocessing and centroids fixed for six months.
-    5. Infer each daily state with trailing-window DP.
+    Parameters
+    ----------
+    features:
+        Raw feature matrix indexed by unique, increasing dates.
+    returns:
+        Return series aligned with ``features`` and used to order the
+        fitted states from bull to bear.
+    jump_penalty:
+        Nonnegative penalty applied to each state change.
+    training_length:
+        Number of observations in each training and inference window.
+    n_init:
+        Number of model initializations at each refit.
+    random_state:
+        Seed used for reproducible model initialization.
+    verbose:
+        Whether to print refit progress.
+
+    Returns
+    -------
+    states:
+        Nullable integer state series. Observations before the first
+        complete training window remain missing.
+    refit_dates:
+        Dates on which the model was refitted.
     """
     if not isinstance(features, pd.DataFrame):
         raise TypeError("features must be a pandas DataFrame")
@@ -46,11 +70,11 @@ def six_month_refit_states(
     if not features.index.is_unique:
         raise ValueError("feature dates must be unique")
 
-    if len(features) < training_length:
-        raise ValueError("not enough observations for the training window")
-
     if not isinstance(training_length, int) or training_length < 1:
         raise ValueError("training_length must be a positive integer")
+
+    if len(features) < training_length:
+        raise ValueError("not enough observations for the training window")
 
     if not np.isfinite(features.to_numpy()).all():
         raise ValueError("features must contain only finite values")
@@ -112,10 +136,7 @@ def six_month_refit_states(
         block_stop = min(next_refit_position, n_obs)
 
         for position in range(refit_position, block_stop):
-            window_start = max(
-                0,
-                position - training_length + 1,
-            )
+            window_start = position - training_length + 1
 
             raw_window = features.iloc[window_start : position + 1]
 

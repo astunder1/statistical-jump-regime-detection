@@ -2,6 +2,7 @@ from itertools import pairwise
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from regimejump.inference import six_month_refit_states
 
@@ -27,6 +28,78 @@ def make_data():
     )
 
     return features, returns
+
+
+# ---------------------------------------------------------------------------
+# Input validation
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    (
+        "feature_dates",
+        "return_dates",
+        "second_feature_value",
+        "message",
+    ),
+    [
+        (
+            ["2020-02-01", "2020-01-01"],
+            ["2020-02-01", "2020-01-01"],
+            1.0,
+            "sorted",
+        ),
+        (
+            ["2020-01-01", "2020-01-02"],
+            ["2020-01-01", "2020-01-03"],
+            1.0,
+            "identical indexes",
+        ),
+        (
+            ["2020-01-01", "2020-01-02"],
+            ["2020-01-01", "2020-01-02"],
+            np.nan,
+            "finite",
+        ),
+    ],
+)
+def test_rejects_invalid_inputs(
+    feature_dates,
+    return_dates,
+    second_feature_value,
+    message,
+):
+    features = pd.DataFrame(
+        {
+            "feature": [
+                0.0,
+                second_feature_value,
+            ]
+        },
+        index=pd.to_datetime(feature_dates),
+    )
+
+    returns = pd.Series(
+        [0.0, 0.0],
+        index=pd.to_datetime(return_dates),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=message,
+    ):
+        six_month_refit_states(
+            features,
+            returns,
+            jump_penalty=2.0,
+            training_length=2,
+            n_init=1,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Inference behavior
+# ---------------------------------------------------------------------------
 
 
 def test_states_begin_after_complete_training_window():
