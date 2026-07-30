@@ -24,7 +24,10 @@ PAPER_JUMP_PENALTIES: tuple[float, ...] = (
 def select_best_penalty(
     sharpe_by_penalty: Mapping[float, float],
 ) -> float:
-    """Select the candidate penalty with the highest validation Sharpe."""
+    """Select the penalty with the highest finite validation Sharpe.
+
+    Ties are resolved by candidate insertion order.
+    """
 
     finite_scores = {
         float(penalty): float(sharpe)
@@ -50,7 +53,7 @@ def generate_candidate_state_paths(
     random_state: int | None = 0,
     verbose: bool = False,
 ) -> dict[float, pd.Series]:
-    """Generate one full causal online state path per candidate penalty."""
+    """Generate a complete causal state path for each candidate penalty."""
 
     paths: dict[float, pd.Series] = {}
 
@@ -114,7 +117,69 @@ def monthly_selected_state_path(
     random_state: int | None = 0,
     verbose: bool = False,
 ) -> tuple[pd.Series, pd.Series, pd.DataFrame]:
-    """Generate states using monthly trailing-Sharpe penalty selection."""
+    """Generate a state path using monthly penalty selection.
+
+    A complete causal state path and strategy backtest are generated for
+    each candidate penalty. At each month-end, candidates are evaluated
+    by their trailing validation-period Sharpe ratio. The selected penalty
+    becomes active on the second trading day of the following month.
+
+    The output state path is assembled from the independently inferred
+    candidate paths according to the penalty active on each date. Dates
+    immediately before the test period are included when needed for
+    delayed strategy execution.
+
+    Parameters
+    ----------
+    features:
+        Raw feature matrix indexed by date.
+    model_returns:
+        Returns used to fit and order the regime states.
+    equity_returns:
+        Equity returns used to evaluate candidate strategies.
+    risk_free_returns:
+        Risk-free returns used for strategy evaluation and Sharpe ratios.
+    test_start:
+        First date of the reported test period.
+    test_end:
+        Last date of the reported test period.
+    candidates:
+        Candidate jump penalties.
+    training_length:
+        Number of observations in each model-training window.
+    validation_years:
+        Length of the trailing Sharpe-validation window.
+    delay:
+        Trading-day delay between signal observation and execution.
+    cost_rate:
+        Transaction cost per one-way trade.
+    n_init:
+        Number of model initializations at each refit.
+    random_state:
+        Seed used for reproducible model initialization.
+    verbose:
+        Whether to print monthly selections and fitting progress.
+
+    Returns
+    -------
+    selected_states:
+        Daily state path for the selected penalties.
+    selected_monthly:
+        Penalty selected for each month.
+    score_table:
+        Validation Sharpe ratios by month and candidate penalty.
+    """
+
+    if not isinstance(validation_years, int) or validation_years < 1:
+        raise ValueError("validation_years must be a positive integer")
+
+    test_start = pd.Timestamp(test_start)
+    test_end = pd.Timestamp(test_end)
+
+    test_dates = features.index[(features.index >= test_start) & (features.index <= test_end)]
+
+    if test_dates.empty:
+        raise ValueError("test period contains no observations")
 
     state_paths = generate_candidate_state_paths(
         features=features,
@@ -133,14 +198,6 @@ def monthly_selected_state_path(
         delay=delay,
         cost_rate=cost_rate,
     )
-
-    test_start = pd.Timestamp(test_start)
-    test_end = pd.Timestamp(test_end)
-
-    test_dates = features.index[(features.index >= test_start) & (features.index <= test_end)]
-
-    if test_dates.empty:
-        raise ValueError("test period contains no observations")
 
     test_start_position = int(features.index.searchsorted(test_dates[0]))
 
@@ -259,6 +316,8 @@ def monthly_selected_state_path(
         name="state",
     )
 
+    # Stitch the independently inferred candidate paths according to the
+    # penalty active on each date.
     for penalty, path in state_paths.items():
         use_penalty = daily_penalty == float(penalty)
 

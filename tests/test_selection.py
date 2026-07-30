@@ -2,6 +2,7 @@ import pandas as pd
 import pytest
 
 from regimejump.selection import (
+    monthly_selected_state_path,
     select_best_penalty,
 )
 
@@ -208,3 +209,34 @@ def test_monthly_selection_applies_new_penalty_on_second_day(
 
     assert january_states.iloc[0] == 0
     assert (january_states.iloc[1:] == 1).all()
+
+
+def test_rejects_invalid_validation_years():
+    dates = pd.bdate_range(
+        "2020-01-01",
+        periods=5,
+    )
+
+    features = pd.DataFrame(
+        {"feature": 0.0},
+        index=dates,
+    )
+
+    returns = pd.Series(
+        0.0,
+        index=dates,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="validation_years",
+    ):
+        monthly_selected_state_path(
+            features=features,
+            model_returns=returns,
+            equity_returns=returns,
+            risk_free_returns=returns,
+            test_start="2020-01-01",
+            test_end="2020-01-31",
+            validation_years=0,
+        )
