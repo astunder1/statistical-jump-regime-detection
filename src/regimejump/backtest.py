@@ -21,7 +21,7 @@ def delayed_equity_weight(states: pd.Series, delay: int = 2) -> pd.Series:
     valid_states = states.dropna()
 
     if not valid_states.isin([0, 1]).all():
-        raise ValueError("States must be either 0 or 1")
+        raise ValueError("states must contain only 0, 1, or missing values")
 
     signal_weight = states.map(
         {
@@ -118,7 +118,31 @@ def run_zero_one_backtest(
     delay: int = 2,
     cost_rate: float = 0.001,
 ) -> pd.DataFrame:
-    """Run the delayed equity/risk-free regime strategy."""
+    """Backtest the delayed binary regime strategy.
+
+    State 0 allocates fully to equities and state 1 allocates fully to the
+    risk-free asset. State signals are shifted by ``delay`` trading days,
+    and ``cost_rate`` is charged for each one-way allocation change.
+
+    Parameters
+    ----------
+    equity_returns:
+        Daily simple equity returns.
+    risk_free_returns:
+        Daily simple risk-free returns aligned with ``equity_returns``.
+    states:
+        Daily regime labels, where 0 is equity and 1 is risk-free.
+    delay:
+        Trading-day delay between signal observation and execution.
+    cost_rate:
+        Transaction cost per one-way trade.
+
+    Returns
+    -------
+    pd.DataFrame
+        Daily states, allocations, turnover, costs, and gross and net
+        strategy returns.
+    """
 
     equity_weight = delayed_equity_weight(states, delay)
     turnover = calculate_turnover(equity_weight)

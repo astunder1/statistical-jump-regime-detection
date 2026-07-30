@@ -1,3 +1,5 @@
+"""Tests for the delayed binary regime-strategy backtest."""
+
 import pandas as pd
 
 from regimejump.backtest import (
@@ -8,6 +10,10 @@ from regimejump.backtest import (
     delayed_equity_weight,
     run_zero_one_backtest,
 )
+
+# ---------------------------------------------------------------------------
+# Allocation and turnover
+# ---------------------------------------------------------------------------
 
 
 def test_delayed_equity_weight_applies_signal_two_days_later():
@@ -45,6 +51,23 @@ def test_zero_delay_applies_signal_immediately():
     pd.testing.assert_series_equal(result, expected)
 
 
+def test_delayed_weight_preserves_missing_states():
+    states = pd.Series(
+        [pd.NA, pd.NA, 0, 1],
+        dtype="Int64",
+    )
+
+    result = delayed_equity_weight(states, delay=0)
+
+    expected = pd.Series(
+        [pd.NA, pd.NA, 1.0, 0.0],
+        dtype="Float64",
+        name="equity_weight",
+    )
+
+    pd.testing.assert_series_equal(result, expected)
+
+
 def test_calculate_turnover_detects_allocation_changes():
     weights = pd.Series(
         [pd.NA, 1.0, 1.0, 0.0, 0.0, 1.0],
@@ -61,6 +84,11 @@ def test_calculate_turnover_detects_allocation_changes():
     )
 
     pd.testing.assert_series_equal(result, expected)
+
+
+# ---------------------------------------------------------------------------
+# Return and cost calculations
+# ---------------------------------------------------------------------------
 
 
 def test_transaction_cost_is_turnover_times_rate():
@@ -146,6 +174,11 @@ def test_net_return_deducts_transaction_cost():
     pd.testing.assert_series_equal(result, expected)
 
 
+# ---------------------------------------------------------------------------
+# End-to-end backtest
+# ---------------------------------------------------------------------------
+
+
 def test_run_zero_one_backtest_end_to_end():
     index = pd.date_range("2020-01-01", periods=5, freq="B")
 
@@ -189,20 +222,3 @@ def test_run_zero_one_backtest_end_to_end():
     assert result.loc[index[4], "transaction_cost"] == 0.001
     assert result.loc[index[4], "gross_return"] == 0.001
     assert result.loc[index[4], "net_return"] == 0.0
-
-
-def test_delayed_weight_preserves_missing_states():
-    states = pd.Series(
-        [pd.NA, pd.NA, 0, 1],
-        dtype="Int64",
-    )
-
-    result = delayed_equity_weight(states, delay=0)
-
-    expected = pd.Series(
-        [pd.NA, pd.NA, 1.0, 0.0],
-        dtype="Float64",
-        name="equity_weight",
-    )
-
-    pd.testing.assert_series_equal(result, expected)
