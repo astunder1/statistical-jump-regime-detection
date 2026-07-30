@@ -1,0 +1,9 @@
+,Paper B&H,Public-data B&H,Paper JM,Public-data JM
+Return,0.102,0.1021,0.112,0.0972
+Volatility,0.182,0.1817,0.131,0.1261
+Sharpe,0.48,0.4797,0.68,0.5884
+Maximum drawdown,-0.552,-0.5525,-0.266,-0.3386
+Calmar,0.16,0.1848,0.33,0.2872
+Expected shortfall 5%,-0.027,-0.0272,-0.02,-0.0195
+Turnover,0.0,0.0,0.44,0.4413
+Leverage,1.0,1.0,0.8,0.7556

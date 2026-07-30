@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -192,6 +194,17 @@ def main() -> None:
             "Leverage",
         ],
     )
+
+    table_output = Path("results/tables/spx_comparison.csv")
+
+    table_output.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    comparison.round(4).to_csv(table_output)
+
+    print(f"\nSaved comparison table to {table_output}")
 
     percentage_rows = [
         "Return",
