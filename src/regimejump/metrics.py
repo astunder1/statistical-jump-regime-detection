@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 
 def cumulative_wealth(
     net_returns: pd.Series,
@@ -19,10 +20,7 @@ def cumulative_wealth(
 
     valid_returns = net_returns.dropna().astype(float)
 
-    valid_wealth = (
-        initial_wealth
-        * (1.0 + valid_returns).cumprod()
-    )
+    valid_wealth = initial_wealth * (1.0 + valid_returns).cumprod()
 
     wealth = pd.Series(
         pd.NA,
@@ -88,9 +86,7 @@ def annualized_return(
     total_growth = (1.0 + valid_returns).prod()
     n_periods = len(valid_returns)
 
-    return float(
-        total_growth ** (periods_per_year / n_periods) - 1.0
-    )
+    return float(total_growth ** (periods_per_year / n_periods) - 1.0)
 
 
 def annualized_volatility(
@@ -106,10 +102,7 @@ def annualized_volatility(
     if periods_per_year <= 0:
         raise ValueError("periods_per_year must be positive")
 
-    return float(
-        valid_returns.std(ddof=1)
-        * np.sqrt(periods_per_year)
-    )
+    return float(valid_returns.std(ddof=1) * np.sqrt(periods_per_year))
 
 
 def sharpe_ratio(
@@ -122,20 +115,14 @@ def sharpe_ratio(
         raise ValueError("returns must have identical indexes")
 
     valid_returns = returns.dropna().astype(float)
-    valid_risk_free = risk_free_returns.loc[
-        valid_returns.index
-    ].astype(float)
+    valid_risk_free = risk_free_returns.loc[valid_returns.index].astype(float)
 
     if len(valid_returns) < 2:
         raise ValueError("returns must contain at least two valid values")
 
-    mean_excess_return = (
-        valid_returns - valid_risk_free
-    ).mean()
+    mean_excess_return = (valid_returns - valid_risk_free).mean()
 
-    annualized_excess_return = (
-        mean_excess_return * periods_per_year
-    )
+    annualized_excess_return = mean_excess_return * periods_per_year
 
     volatility = annualized_volatility(
         valid_returns,
@@ -146,3 +133,46 @@ def sharpe_ratio(
         raise ValueError("Sharpe ratio is undefined for zero volatility")
 
     return float(annualized_excess_return / volatility)
+
+
+def calmar_ratio(
+    returns: pd.Series,
+    periods_per_year: int = 252,
+) -> float:
+    """Calculate annualized compound return divided by maximum drawdown."""
+
+    wealth = cumulative_wealth(returns)
+    max_drawdown = maximum_drawdown(wealth)
+
+    if max_drawdown == 0:
+        raise ValueError("Calmar ratio is undefined when maximum drawdown is zero")
+
+    return float(
+        annualized_return(
+            returns,
+            periods_per_year=periods_per_year,
+        )
+        / abs(max_drawdown)
+    )
+
+
+def expected_shortfall(
+    returns: pd.Series,
+    alpha: float = 0.05,
+) -> float:
+    """Return the mean of the worst alpha fraction of returns."""
+
+    if not 0 < alpha < 1:
+        raise ValueError("alpha must be between 0 and 1")
+
+    valid_returns = returns.dropna().astype(float)
+
+    if valid_returns.empty:
+        raise ValueError("returns must contain at least one valid value")
+
+    tail_size = max(
+        1,
+        int(np.ceil(alpha * len(valid_returns))),
+    )
+
+    return float(valid_returns.nsmallest(tail_size).mean())
