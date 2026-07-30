@@ -1,5 +1,5 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pytest
 
 from regimejump.risk_free import discount_yield_to_daily_return, risk_free_returns_for_dates
@@ -44,11 +44,13 @@ def test_alignment_uses_most_recent_past_yield():
         index=pd.to_datetime(["2020-01-02", "2020-01-06"]),
     )
 
-    dates = pd.to_datetime([
-        "2020-01-02",
-        "2020-01-03",
-        "2020-01-06",
-    ])
+    dates = pd.to_datetime(
+        [
+            "2020-01-02",
+            "2020-01-03",
+            "2020-01-06",
+        ]
+    )
 
     result = risk_free_returns_for_dates(yields, dates)
 
@@ -67,10 +69,12 @@ def test_alignment_does_not_backfill_from_future():
         index=pd.to_datetime(["2020-01-06"]),
     )
 
-    dates = pd.to_datetime([
-        "2020-01-03",
-        "2020-01-06",
-    ])
+    dates = pd.to_datetime(
+        [
+            "2020-01-03",
+            "2020-01-06",
+        ]
+    )
 
     result = risk_free_returns_for_dates(yields, dates)
 
@@ -81,18 +85,22 @@ def test_alignment_does_not_backfill_from_future():
 def test_alignment_fills_missing_quote_from_past():
     yields = pd.Series(
         [4.0, np.nan, 6.0],
-        index=pd.to_datetime([
+        index=pd.to_datetime(
+            [
+                "2020-01-02",
+                "2020-01-03",
+                "2020-01-06",
+            ]
+        ),
+    )
+
+    dates = pd.to_datetime(
+        [
             "2020-01-02",
             "2020-01-03",
             "2020-01-06",
-        ]),
+        ]
     )
-
-    dates = pd.to_datetime([
-        "2020-01-02",
-        "2020-01-03",
-        "2020-01-06",
-    ])
 
     result = risk_free_returns_for_dates(yields, dates)
 

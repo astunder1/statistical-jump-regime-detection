@@ -17,9 +17,7 @@ from __future__ import annotations
 import numpy as np
 
 
-def kmeans_plusplus_init(
-    X: np.ndarray, n_states: int, rng: np.random.Generator
-) -> np.ndarray:
+def kmeans_plusplus_init(X: np.ndarray, n_states: int, rng: np.random.Generator) -> np.ndarray:
     """k-means++ seeding: pick initial centroids spread out across ``X``.
 
     Standard k-means++ (Arthur & Vassilvitskii, 2007): the first centroid
@@ -218,10 +216,7 @@ class JumpModel:
             previous_values = value[t - 1]
 
             best_previous_state = int(np.argmin(previous_values))
-            best_switch_cost = (
-                previous_values[best_previous_state]
-                + self.jump_penalty
-            )
+            best_switch_cost = previous_values[best_previous_state] + self.jump_penalty
 
             for k in range(n_states):
                 stay_cost = previous_values[k]
@@ -246,12 +241,11 @@ class JumpModel:
 
         return path, best_cost
 
-
     def _update_centroids(
-            self,
-            X: np.ndarray,
-            labels: np.ndarray,
-            old_centroids: np.ndarray,
+        self,
+        X: np.ndarray,
+        labels: np.ndarray,
+        old_centroids: np.ndarray,
     ) -> np.ndarray:
         """Update centroids from fixed state assignment
         Nonempty states updated to mean of their assigned observations.
@@ -279,11 +273,7 @@ class JumpModel:
         )
 
         # Reseed empty states using poorly fitted observations
-        empty_states = [
-            k
-            for k in range(self.n_states)
-            if not np.any(labels == k)
-        ]
+        empty_states = [k for k in range(self.n_states) if not np.any(labels == k)]
 
         available = residuals.copy()
 
@@ -296,8 +286,7 @@ class JumpModel:
 
         return new_centroids
 
-
-    def fit(self, X: np.ndarray) -> "JumpModel":
+    def fit(self, X: np.ndarray) -> JumpModel:
         """Fit the jump model to ``X`` by coordinate descent.
 
         Coordinate descent is run from ``n_init`` k-means++ initializations.
@@ -380,9 +369,8 @@ class JumpModel:
                     centroids,
                 )
 
-                labels_unchanged = (
-                    previous_labels is not None
-                    and np.array_equal(labels, previous_labels)
+                labels_unchanged = previous_labels is not None and np.array_equal(
+                    labels, previous_labels
                 )
 
                 centroids = updated_centroids
@@ -425,7 +413,7 @@ class JumpModel:
         path, _ = self._dp_state_path(np.asarray(X, dtype=float), self.centroids_)
         return path
 
-    def relabel_by_feature(self, X: np.ndarray, feature_idx: int = 0) -> "JumpModel":
+    def relabel_by_feature(self, X: np.ndarray, feature_idx: int = 0) -> JumpModel:
         """Relabel fitted states so state 0 is the high-mean regime.
 
         States from coordinate descent are arbitrarily ordered (whichever
@@ -459,7 +447,7 @@ class JumpModel:
     def relabel_by_cumulative_return(
         self,
         returns: np.ndarray,
-    ) -> "JumpModel":
+    ) -> JumpModel:
         """Relabel states by decreasing cumulative return."""
         if self.centroids_ is None or self.labels_ is None:
             raise RuntimeError("JumpModel must be fitted before relabeling")

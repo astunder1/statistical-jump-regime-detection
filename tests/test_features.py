@@ -2,7 +2,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from regimejump.features import DEFAULT_HALFLIVES, PAPER_FEATURE_NAMES, compute_features, feature_names, compute_paper_features
+from regimejump.features import (
+    DEFAULT_HALFLIVES,
+    PAPER_FEATURE_NAMES,
+    compute_features,
+    compute_paper_features,
+    feature_names,
+)
 
 
 @pytest.fixture
@@ -80,9 +86,7 @@ def test_downside_deviation_only_sees_negative_part():
     df1 = compute_features(s1, halflives=(10,))
     df2 = compute_features(s2, halflives=(10,))
 
-    pd.testing.assert_series_equal(
-        df1["ewm_downside_dev_10"], df2["ewm_downside_dev_10"]
-    )
+    pd.testing.assert_series_equal(df1["ewm_downside_dev_10"], df2["ewm_downside_dev_10"])
 
 
 def test_min_periods_produces_leading_nans(returns):
@@ -103,11 +107,7 @@ def test_paper_downside_dev_10_matches_definition(returns):
     features = compute_paper_features(returns)
 
     negative_returns = returns.clip(upper=0.0)
-    expected = np.sqrt(
-        negative_returns.pow(2)
-        .ewm(halflife=10, min_periods=1)
-        .mean()
-    )
+    expected = np.sqrt(negative_returns.pow(2).ewm(halflife=10, min_periods=1).mean())
 
     pd.testing.assert_series_equal(
         features["downside_dev_10"],
@@ -126,10 +126,7 @@ def test_paper_sortino_matches_definition(returns, halflife):
     ).mean()
 
     downside_deviation = np.sqrt(
-        returns.clip(upper=0.0)
-        .pow(2)
-        .ewm(halflife=halflife, min_periods=1)
-        .mean()
+        returns.clip(upper=0.0).pow(2).ewm(halflife=halflife, min_periods=1).mean()
     )
 
     expected = ewm_return / downside_deviation
@@ -141,8 +138,7 @@ def test_paper_sortino_matches_definition(returns, halflife):
     )
 
     assert list(features.columns) == [
-    "downside_dev_10",
-    "sortino_20",
-    "sortino_60",
-]
-
+        "downside_dev_10",
+        "sortino_20",
+        "sortino_60",
+    ]

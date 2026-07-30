@@ -30,6 +30,7 @@ PAPER_FEATURE_NAMES: tuple[str, ...] = (
     "sortino_60",
 )
 
+
 def feature_names(halflives: Sequence[int] = DEFAULT_HALFLIVES) -> list[str]:
     """Column names produced by :func:`compute_features`, in order."""
     names = []
@@ -38,6 +39,7 @@ def feature_names(halflives: Sequence[int] = DEFAULT_HALFLIVES) -> list[str]:
         names.append(f"ewm_downside_dev_{h}")
         names.append(f"ewm_abs_mean_{h}")
     return names
+
 
 def compute_ewm_downside_deviation(
     returns: pd.Series,
@@ -51,10 +53,14 @@ def compute_ewm_downside_deviation(
     """
     negative_returns = returns.clip(upper=0.0)
 
-    downside_second_moment = negative_returns.pow(2).ewm(
-        halflife=halflife,
-        min_periods=min_periods,
-    ).mean()
+    downside_second_moment = (
+        negative_returns.pow(2)
+        .ewm(
+            halflife=halflife,
+            min_periods=min_periods,
+        )
+        .mean()
+    )
 
     return np.sqrt(downside_second_moment)
 
@@ -90,14 +96,11 @@ def compute_features(
     columns = {}
     for h in halflives:
         columns[f"ewm_mean_{h}"] = returns.ewm(halflife=h, min_periods=min_periods).mean()
-        columns[f"ewm_downside_dev_{h}"] = downside.ewm(
-            halflife=h, min_periods=min_periods
-        ).std()
-        columns[f"ewm_abs_mean_{h}"] = abs_returns.ewm(
-            halflife=h, min_periods=min_periods
-        ).mean()
+        columns[f"ewm_downside_dev_{h}"] = downside.ewm(halflife=h, min_periods=min_periods).std()
+        columns[f"ewm_abs_mean_{h}"] = abs_returns.ewm(halflife=h, min_periods=min_periods).mean()
 
     return pd.DataFrame(columns, index=returns.index, columns=feature_names(halflives))
+
 
 def compute_paper_features(
     returns: pd.Series,

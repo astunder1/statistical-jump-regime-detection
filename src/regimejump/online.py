@@ -20,6 +20,7 @@ import pandas as pd
 
 from regimejump.jump import JumpModel
 
+
 def expanding_standardize(
     data: pd.DataFrame | pd.Series,
     min_periods: int = 2,

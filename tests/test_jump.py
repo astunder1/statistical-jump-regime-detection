@@ -164,17 +164,21 @@ def test_matches_jumpmodels_reference():
 
 
 def test_dp_simple_switch():
-    X = np.array([
-        [0.0],
-        [1.0],
-        [9.0],
-        [10.0],
-    ])
+    X = np.array(
+        [
+            [0.0],
+            [1.0],
+            [9.0],
+            [10.0],
+        ]
+    )
 
-    centroids = np.array([
-        [0.0],
-        [10.0],
-    ])
+    centroids = np.array(
+        [
+            [0.0],
+            [10.0],
+        ]
+    )
 
     model = JumpModel(n_states=2, jump_penalty=4.0)
     path, cost = model._dp_state_path(X, centroids)
@@ -187,17 +191,21 @@ def test_dp_simple_switch():
 
 
 def test_dp_zero_penalty_chooses_nearest_centroid():
-    X = np.array([
-        [0.0],
-        [9.0],
-        [1.0],
-        [10.0],
-    ])
+    X = np.array(
+        [
+            [0.0],
+            [9.0],
+            [1.0],
+            [10.0],
+        ]
+    )
 
-    centroids = np.array([
-        [0.0],
-        [10.0],
-    ])
+    centroids = np.array(
+        [
+            [0.0],
+            [10.0],
+        ]
+    )
 
     model = JumpModel(n_states=2, jump_penalty=0.0)
     path, _ = model._dp_state_path(X, centroids)
@@ -207,17 +215,21 @@ def test_dp_zero_penalty_chooses_nearest_centroid():
 
 
 def test_dp_large_penalty_prevents_switching():
-    X = np.array([
-        [0.0],
-        [1.0],
-        [9.0],
-        [10.0],
-    ])
+    X = np.array(
+        [
+            [0.0],
+            [1.0],
+            [9.0],
+            [10.0],
+        ]
+    )
 
-    centroids = np.array([
-        [0.0],
-        [10.0],
-    ])
+    centroids = np.array(
+        [
+            [0.0],
+            [10.0],
+        ]
+    )
 
     model = JumpModel(n_states=2, jump_penalty=1_000_000.0)
     path, _ = model._dp_state_path(X, centroids)
@@ -330,19 +342,23 @@ def test_dp_rejects_nan():
 
 
 def test_update_centroids_uses_state_means():
-    X = np.array([
-        [0.0, 2.0],
-        [2.0, 4.0],
-        [8.0, 10.0],
-        [10.0, 12.0],
-    ])
+    X = np.array(
+        [
+            [0.0, 2.0],
+            [2.0, 4.0],
+            [8.0, 10.0],
+            [10.0, 12.0],
+        ]
+    )
 
     labels = np.array([0, 0, 1, 1])
 
-    old_centroids = np.array([
-        [-5.0, -5.0],
-        [20.0, 20.0],
-    ])
+    old_centroids = np.array(
+        [
+            [-5.0, -5.0],
+            [20.0, 20.0],
+        ]
+    )
 
     model = JumpModel(n_states=2)
 
@@ -352,21 +368,25 @@ def test_update_centroids_uses_state_means():
         old_centroids,
     )
 
-    expected = np.array([
-        [1.0, 3.0],
-        [9.0, 11.0],
-    ])
+    expected = np.array(
+        [
+            [1.0, 3.0],
+            [9.0, 11.0],
+        ]
+    )
 
     np.testing.assert_allclose(updated, expected)
 
 
 def test_update_centroids_does_not_modify_old_centroids():
-    X = np.array([
-        [0.0],
-        [2.0],
-        [8.0],
-        [10.0],
-    ])
+    X = np.array(
+        [
+            [0.0],
+            [2.0],
+            [8.0],
+            [10.0],
+        ]
+    )
     labels = np.array([0, 0, 1, 1])
     old_centroids = np.array([[-5.0], [20.0]])
     original = old_centroids.copy()
@@ -378,19 +398,23 @@ def test_update_centroids_does_not_modify_old_centroids():
 
 
 def test_update_centroids_reseeds_empty_state_with_worst_fitted_point():
-    X = np.array([
-        [0.0],
-        [1.0],
-        [10.0],
-    ])
+    X = np.array(
+        [
+            [0.0],
+            [1.0],
+            [10.0],
+        ]
+    )
 
     # Every observation is currently assigned to state 0.
     labels = np.array([0, 0, 0])
 
-    old_centroids = np.array([
-        [0.0],
-        [50.0],
-    ])
+    old_centroids = np.array(
+        [
+            [0.0],
+            [50.0],
+        ]
+    )
 
     model = JumpModel(n_states=2)
     updated = model._update_centroids(X, labels, old_centroids)
@@ -403,24 +427,29 @@ def test_update_centroids_reseeds_empty_state_with_worst_fitted_point():
 
 
 def test_update_centroids_uses_distinct_reseeds():
-    X = np.array([
-        [0.0],
-        [1.0],
-        [10.0],
-    ])
+    X = np.array(
+        [
+            [0.0],
+            [1.0],
+            [10.0],
+        ]
+    )
     labels = np.array([0, 0, 0])
 
-    old_centroids = np.array([
-        [0.0],
-        [50.0],
-        [60.0],
-    ])
+    old_centroids = np.array(
+        [
+            [0.0],
+            [50.0],
+            [60.0],
+        ]
+    )
 
     model = JumpModel(n_states=3)
     updated = model._update_centroids(X, labels, old_centroids)
 
     # Empty states should receive different observations.
     assert not np.array_equal(updated[1], updated[2])
+
 
 @pytest.mark.parametrize(
     ("X", "message"),
@@ -445,6 +474,7 @@ def test_fit_rejects_more_states_than_observations():
     with pytest.raises(ValueError, match="cannot exceed"):
         model.fit(X)
 
+
 @pytest.mark.parametrize(
     ("kwargs", "message"),
     [
@@ -461,15 +491,18 @@ def test_fit_rejects_invalid_parameters(kwargs, message):
     with pytest.raises(ValueError, match=message):
         model.fit(X)
 
+
 def test_fit_sets_expected_attributes():
-    X = np.array([
-        [0.0],
-        [0.2],
-        [0.1],
-        [9.9],
-        [10.0],
-        [10.1],
-    ])
+    X = np.array(
+        [
+            [0.0],
+            [0.2],
+            [0.1],
+            [9.9],
+            [10.0],
+            [10.1],
+        ]
+    )
 
     model = JumpModel(
         n_states=2,
@@ -522,6 +555,7 @@ def test_single_restart_fit_is_reproducible():
     )
     assert model_a.inertia_ == pytest.approx(model_b.inertia_)
 
+
 def test_multiple_restarts_do_not_worsen_objective():
     rng = np.random.default_rng(321)
     X = rng.normal(size=(100, 3))
@@ -541,6 +575,7 @@ def test_multiple_restarts_do_not_worsen_objective():
     ).fit(X)
 
     assert model_many.inertia_ <= model_one.inertia_ + 1e-12
+
 
 def test_fitted_labels_match_dp_path_for_fitted_centroids():
     rng = np.random.default_rng(456)
@@ -620,11 +655,13 @@ def test_online_states_match_jumpmodels_reference():
     # Create a nontrivial test sequence that moves between both centroids.
     rng = np.random.default_rng(9)
 
-    X_test = np.vstack([
-        ours.centroids_[0] + rng.normal(0.0, 0.1, size=(20, X.shape[1])),
-        ours.centroids_[1] + rng.normal(0.0, 0.1, size=(30, X.shape[1])),
-        ours.centroids_[0] + rng.normal(0.0, 0.1, size=(20, X.shape[1])),
-    ])
+    X_test = np.vstack(
+        [
+            ours.centroids_[0] + rng.normal(0.0, 0.1, size=(20, X.shape[1])),
+            ours.centroids_[1] + rng.normal(0.0, 0.1, size=(30, X.shape[1])),
+            ours.centroids_[0] + rng.normal(0.0, 0.1, size=(20, X.shape[1])),
+        ]
+    )
 
     ours_online = rolling_dp_online_path(
         X_test,

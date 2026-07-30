@@ -12,15 +12,13 @@ pass. yfinance (Yahoo Finance) is used instead; it requires no API key either.
 from __future__ import annotations
 
 import argparse
-from datetime import date
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
 import yfinance as yf
 
-FRED_DTB3_URL = (
-    "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTB3"
-)
+FRED_DTB3_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTB3"
 
 TICKERS = {
     "SPX": "^GSPC",
@@ -28,6 +26,7 @@ TICKERS = {
     "DAX": "^GDAXI",
     "NIKKEI": "^N225",
 }
+
 
 def fetch_one(symbol: str, start: str, end: str) -> pd.DataFrame:
     """Fetch one Yahoo Finance series and return it ascending by date, deduplicated."""
@@ -90,7 +89,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=Path("data"))
     parser.add_argument("--start", type=str, default="1990-01-01")
-    parser.add_argument("--end", type=str, default=date.today().isoformat())
+    parser.add_argument("--end", type=str, default=datetime.now(timezone.utc).date().isoformat())
     parser.add_argument("--force", action="store_true", help="re-download even if cached")
     args = parser.parse_args()
 

@@ -6,31 +6,39 @@ from regimejump.preprocessing import standardize_from_training_window
 
 
 def test_standardization_uses_training_statistics():
-    training = pd.DataFrame({
-        "a": [0.0, 2.0],
-        "b": [10.0, 14.0],
-    })
+    training = pd.DataFrame(
+        {
+            "a": [0.0, 2.0],
+            "b": [10.0, 14.0],
+        }
+    )
 
-    data = pd.DataFrame({
-        "a": [3.0],
-        "b": [16.0],
-    })
+    data = pd.DataFrame(
+        {
+            "a": [3.0],
+            "b": [16.0],
+        }
+    )
 
     result = standardize_from_training_window(training, data)
 
-    expected = pd.DataFrame({
-        "a": [2.0],  # (3 - 1) / 1
-        "b": [2.0],  # (16 - 12) / 2
-    })
+    expected = pd.DataFrame(
+        {
+            "a": [2.0],  # (3 - 1) / 1
+            "b": [2.0],  # (16 - 12) / 2
+        }
+    )
 
     pd.testing.assert_frame_equal(result, expected)
 
 
 def test_training_standardizes_to_zero_mean_and_unit_variance():
-    training = pd.DataFrame({
-        "a": [0.0, 1.0, 2.0],
-        "b": [10.0, 12.0, 14.0],
-    })
+    training = pd.DataFrame(
+        {
+            "a": [0.0, 1.0, 2.0],
+            "b": [10.0, 12.0, 14.0],
+        }
+    )
 
     result = standardize_from_training_window(training, training)
 

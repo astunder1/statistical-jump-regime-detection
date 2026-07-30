@@ -15,9 +15,7 @@ from regimejump.online import (
 def df():
     rng = np.random.default_rng(42)
     idx = pd.date_range("2020-01-01", periods=100, freq="B")
-    return pd.DataFrame(
-        {"a": rng.normal(0, 1, 100), "b": rng.normal(5, 2, 100)}, index=idx
-    )
+    return pd.DataFrame({"a": rng.normal(0, 1, 100), "b": rng.normal(5, 2, 100)}, index=idx)
 
 
 # ---- expanding_standardize -------------------------------------------------
@@ -42,7 +40,7 @@ def test_expanding_standardize_no_lookahead(df):
     perturbed.iloc[61:] = perturbed.iloc[61:] + 1000.0
     z_perturbed = expanding_standardize(perturbed, min_periods=5)
 
-    pd.testing.assert_frame_equal(z_full.iloc[: 61], z_perturbed.iloc[: 61])
+    pd.testing.assert_frame_equal(z_full.iloc[:61], z_perturbed.iloc[:61])
 
 
 def test_expanding_standardize_leading_nans(df):
@@ -102,9 +100,7 @@ def test_zero_penalty_matches_nearest_centroid():
     X[25:] += 5  # push second half near the other centroid
 
     path = greedy_online_path(X, centroids, jump_penalty=0.0)
-    dists = np.stack(
-        [np.sum((X - c) ** 2, axis=1) for c in centroids], axis=1
-    )
+    dists = np.stack([np.sum((X - c) ** 2, axis=1) for c in centroids], axis=1)
     expected = np.argmin(dists, axis=1)
     np.testing.assert_array_equal(path, expected)
 
@@ -133,6 +129,7 @@ def test_empty_input_returns_empty_path():
     centroids = np.array([[0.0, 0.0], [1.0, 1.0]])
     path = greedy_online_path(np.empty((0, 2)), centroids, jump_penalty=1.0)
     assert path.shape == (0,)
+
 
 def test_rolling_dp_matches_direct_window_calculation():
     rng = np.random.default_rng(10)

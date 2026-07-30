@@ -1,12 +1,13 @@
 import pandas as pd
 
-from regimejump.backtest import (delayed_equity_weight,
-                                 calculate_turnover,
-                                 calculate_transaction_cost,
-                                 calculate_gross_return,
-                                 calculate_net_return,
-                                 run_zero_one_backtest)
-
+from regimejump.backtest import (
+    calculate_gross_return,
+    calculate_net_return,
+    calculate_transaction_cost,
+    calculate_turnover,
+    delayed_equity_weight,
+    run_zero_one_backtest,
+)
 
 
 def test_delayed_equity_weight_applies_signal_two_days_later():

@@ -1,3 +1,5 @@
+from itertools import pairwise
+
 import numpy as np
 import pandas as pd
 
@@ -55,10 +57,7 @@ def test_refits_are_six_months_apart():
 
     assert len(refit_dates) > 1
 
-    for previous, current in zip(
-        refit_dates,
-        refit_dates[1:],
-    ):
+    for previous, current in pairwise(refit_dates):
         assert current >= previous + pd.DateOffset(months=6)
 
 

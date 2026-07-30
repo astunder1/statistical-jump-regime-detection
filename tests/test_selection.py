@@ -1,7 +1,5 @@
-import pytest
-
-import numpy as np
 import pandas as pd
+import pytest
 
 from regimejump.selection import (
     select_best_penalty,
@@ -43,7 +41,7 @@ def test_rejects_when_no_finite_sharpe_exists():
 
 
 def test_generate_candidate_state_paths(monkeypatch):
-    import regimejump.selection as selection
+    from regimejump import selection
 
     dates = pd.bdate_range("2020-01-01", periods=5)
     features = pd.DataFrame({"x": range(5)}, index=dates)
@@ -86,7 +84,7 @@ def test_generate_candidate_state_paths(monkeypatch):
 
 
 def test_generate_candidate_backtests():
-    import regimejump.selection as selection
+    from regimejump import selection
 
     dates = pd.bdate_range("2020-01-01", periods=4)
 
@@ -132,7 +130,7 @@ def test_generate_candidate_backtests():
 def test_monthly_selection_applies_new_penalty_on_second_day(
     monkeypatch,
 ):
-    import regimejump.selection as selection
+    from regimejump import selection
 
     dates = pd.bdate_range(
         "2018-01-01",
@@ -194,18 +192,16 @@ def test_monthly_selection_applies_new_penalty_on_second_day(
         lambda *args, **kwargs: next(scores),
     )
 
-    states, selected, _ = (
-        selection.monthly_selected_state_path(
-            features=features,
-            model_returns=returns,
-            equity_returns=returns,
-            risk_free_returns=returns,
-            test_start="2020-01-01",
-            test_end="2020-01-31",
-            candidates=(0.0, 5.0),
-            training_length=100,
-            validation_years=1,
-        )
+    states, _, _ = selection.monthly_selected_state_path(
+        features=features,
+        model_returns=returns,
+        equity_returns=returns,
+        risk_free_returns=returns,
+        test_start="2020-01-01",
+        test_end="2020-01-31",
+        candidates=(0.0, 5.0),
+        training_length=100,
+        validation_years=1,
     )
 
     january_states = states.loc["2020-01"]

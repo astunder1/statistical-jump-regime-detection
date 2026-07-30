@@ -10,7 +10,6 @@ import pandas as pd
 from regimejump.risk_free import risk_free_returns_for_dates
 from regimejump.selection import monthly_selected_state_path
 
-
 TEST_START = "1990-01-01"
 TEST_END = "2023-12-31"
 
@@ -33,9 +32,7 @@ def main() -> None:
     equity_returns = np.expm1(data["return"])
     equity_returns.name = "equity_return"
 
-    treasury = pd.read_parquet(
-        "data/us_tbill_3m.parquet"
-    )
+    treasury = pd.read_parquet("data/us_tbill_3m.parquet")
 
     risk_free_returns = risk_free_returns_for_dates(
         treasury["annual_discount_yield_pct"],
@@ -45,22 +42,20 @@ def main() -> None:
     model_returns = equity_returns - risk_free_returns
     model_returns.name = "excess_return"
 
-    states, selected_penalties, score_table = (
-        monthly_selected_state_path(
-            features=features,
-            model_returns=model_returns,
-            equity_returns=equity_returns,
-            risk_free_returns=risk_free_returns,
-            test_start=TEST_START,
-            test_end=TEST_END,
-            training_length=3000,
-            validation_years=8,
-            delay=2,
-            cost_rate=0.001,
-            n_init=10,
-            random_state=0,
-            verbose=True,
-        )
+    states, selected_penalties, score_table = monthly_selected_state_path(
+        features=features,
+        model_returns=model_returns,
+        equity_returns=equity_returns,
+        risk_free_returns=risk_free_returns,
+        test_start=TEST_START,
+        test_end=TEST_END,
+        training_length=3000,
+        validation_years=8,
+        delay=2,
+        cost_rate=0.001,
+        n_init=10,
+        random_state=0,
+        verbose=True,
     )
 
     results = data.loc[states.index, feature_columns].copy()
@@ -82,11 +77,7 @@ def main() -> None:
     score_table.to_csv(scores_path)
 
     print("\nSelected-penalty frequencies:")
-    print(
-        selected_penalties
-        .value_counts()
-        .sort_index()
-    )
+    print(selected_penalties.value_counts().sort_index())
 
     print(f"\nSaved states to {states_path}")
     print(f"Saved penalties to {penalties_path}")

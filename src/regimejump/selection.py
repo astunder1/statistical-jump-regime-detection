@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+
 import numpy as np
 import pandas as pd
-from collections.abc import Mapping, Sequence
 
 from regimejump.backtest import run_zero_one_backtest
 from regimejump.inference import six_month_refit_states
@@ -96,6 +97,7 @@ def generate_candidate_backtests(
 
     return backtests
 
+
 def monthly_selected_state_path(
     features: pd.DataFrame,
     model_returns: pd.Series,
@@ -135,26 +137,19 @@ def monthly_selected_state_path(
     test_start = pd.Timestamp(test_start)
     test_end = pd.Timestamp(test_end)
 
-    test_dates = features.index[
-        (features.index >= test_start)
-        & (features.index <= test_end)
-    ]
+    test_dates = features.index[(features.index >= test_start) & (features.index <= test_end)]
 
     if test_dates.empty:
         raise ValueError("test period contains no observations")
 
-    test_start_position = int(
-        features.index.searchsorted(test_dates[0])
-    )
+    test_start_position = int(features.index.searchsorted(test_dates[0]))
 
     pretest_start_position = max(
         0,
         test_start_position - delay,
     )
 
-    pretest_dates = features.index[
-        pretest_start_position:test_start_position
-    ]
+    pretest_dates = features.index[pretest_start_position:test_start_position]
 
     output_dates = pretest_dates.append(test_dates)
 
@@ -179,23 +174,18 @@ def monthly_selected_state_path(
             features.index.searchsorted(
                 month_start,
                 side="left",
-            ) - 1
+            )
+            - 1
         )
 
         if end_position < 0:
-            raise ValueError(
-                "not enough history before a selection month"
-            )
+            raise ValueError("not enough history before a selection month")
 
         validation_end = features.index[end_position]
-        validation_start = (
-            validation_end
-            - pd.DateOffset(years=validation_years)
-        )
+        validation_start = validation_end - pd.DateOffset(years=validation_years)
 
         validation_dates = features.index[
-            (features.index >= validation_start)
-            & (features.index <= validation_end)
+            (features.index >= validation_start) & (features.index <= validation_end)
         ]
 
         scores: dict[float, float] = {}
@@ -215,10 +205,7 @@ def monthly_selected_state_path(
         selected_values[month_start] = selected
 
         if verbose:
-            print(
-                f"{month_start.date()}: "
-                f"selected lambda={selected:.1f}"
-            )
+            print(f"{month_start.date()}: selected lambda={selected:.1f}")
 
     score_table = pd.DataFrame.from_dict(
         score_rows,
@@ -242,9 +229,7 @@ def monthly_selected_state_path(
         name="selected_jump_penalty",
     )
 
-    initial_penalty = selected_monthly.loc[
-        (first_month - 1).start_time
-    ]
+    initial_penalty = selected_monthly.loc[(first_month - 1).start_time]
 
     daily_penalty.loc[pretest_dates] = initial_penalty
 
@@ -253,20 +238,14 @@ def monthly_selected_state_path(
         last_month,
         freq="M",
     ):
-        month_dates = test_dates[
-            test_dates.to_period("M") == month
-        ]
+        month_dates = test_dates[test_dates.to_period("M") == month]
 
         if month_dates.empty:
             continue
 
-        previous_penalty = selected_monthly.loc[
-            (month - 1).start_time
-        ]
+        previous_penalty = selected_monthly.loc[(month - 1).start_time]
 
-        current_penalty = selected_monthly.loc[
-            month.start_time
-        ]
+        current_penalty = selected_monthly.loc[month.start_time]
 
         # A month-end choice is available on the next trading day
         # and becomes applicable from the second trading day.
@@ -283,9 +262,6 @@ def monthly_selected_state_path(
     for penalty, path in state_paths.items():
         use_penalty = daily_penalty == float(penalty)
 
-        selected_states.loc[use_penalty] = (
-            path.loc[use_penalty.index[use_penalty]]
-            .astype("Int64")
-        )
+        selected_states.loc[use_penalty] = path.loc[use_penalty.index[use_penalty]].astype("Int64")
 
     return selected_states, selected_monthly, score_table

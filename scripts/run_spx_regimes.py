@@ -17,30 +17,26 @@ JUMP_PENALTY = 50.0
 
 
 def main() -> None:
-    price_index = pd.read_parquet(
-        "data/spx.parquet"
-    )["Adj Close"].loc[:END_DATE]
+    price_index = pd.read_parquet("data/spx.parquet")["Adj Close"].loc[:END_DATE]
 
-    total_return_index = pd.read_parquet(
-        "data/spx_tr.parquet"
-    )["Adj Close"].loc[:END_DATE]
+    total_return_index = pd.read_parquet("data/spx_tr.parquet")["Adj Close"].loc[:END_DATE]
 
     price_returns = np.log(price_index).diff()
     total_returns = np.log(total_return_index).diff()
 
     first_total_return_date = total_returns.first_valid_index()
 
-    returns = pd.concat([
-        price_returns.loc[price_returns.index < first_total_return_date],
-        total_returns.loc[first_total_return_date:],
-    ])
+    returns = pd.concat(
+        [
+            price_returns.loc[price_returns.index < first_total_return_date],
+            total_returns.loc[first_total_return_date:],
+        ]
+    )
 
     returns = returns.sort_index()
     returns.name = "return"
 
-    treasury_data = pd.read_parquet(
-        "data/us_tbill_3m.parquet"
-    )
+    treasury_data = pd.read_parquet("data/us_tbill_3m.parquet")
 
     risk_free_returns = risk_free_returns_for_dates(
         treasury_data["annual_discount_yield_pct"],
@@ -51,9 +47,7 @@ def main() -> None:
     # the simple daily risk-free return.
     equity_simple_returns = np.expm1(returns)
 
-    excess_returns = (
-        equity_simple_returns - risk_free_returns
-    )
+    excess_returns = equity_simple_returns - risk_free_returns
     excess_returns.name = "excess_return"
 
     features = compute_paper_features(excess_returns)
@@ -82,13 +76,9 @@ def main() -> None:
     results["state"] = states
 
     valid_states = states.dropna().astype(int)
-    switches = valid_states[
-        valid_states.ne(valid_states.shift())
-    ]
+    switches = valid_states[valid_states.ne(valid_states.shift())]
 
-    output = Path(
-    "data/spx_excess_feature_states_lambda50.csv"
-    )
+    output = Path("data/spx_excess_feature_states_lambda50.csv")
     results.to_csv(output)
 
     print(f"\nFirst signal: {valid_states.index[0].date()}")

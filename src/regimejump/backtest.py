@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 
-def delayed_equity_weight(
-        states: pd.Series,
-        delay: int = 2
-) -> pd.Series:
+def delayed_equity_weight(states: pd.Series, delay: int = 2) -> pd.Series:
     """Convert regime states into delayed equity allocations."""
 
     if not isinstance(states, pd.Series):
@@ -21,17 +18,17 @@ def delayed_equity_weight(
     if delay < 0:
         raise ValueError("delay must be >= 0")
 
-
     valid_states = states.dropna()
 
-
-    if not valid_states.isin([0,1]).all():
+    if not valid_states.isin([0, 1]).all():
         raise ValueError("States must be either 0 or 1")
 
-    signal_weight = states.map({
-        0: 1.0,
-        1: 0.0,
-    }).astype("Float64")
+    signal_weight = states.map(
+        {
+            0: 1.0,
+            1: 0.0,
+        }
+    ).astype("Float64")
 
     equity_weight = signal_weight.shift(delay)
     equity_weight.name = "equity_weight"
@@ -46,12 +43,8 @@ def calculate_turnover(
 
     valid_weights = equity_weight.dropna()
 
-
     if not valid_weights.isin([0.0, 1.0]).all():
-        raise ValueError(
-            "equity_weight must contain only 0.0, 1.0, or missing values"
-        )
-
+        raise ValueError("equity_weight must contain only 0.0, 1.0, or missing values")
 
     valid_turnover = valid_weights.diff().abs()
 
@@ -71,15 +64,14 @@ def calculate_turnover(
 
 
 def calculate_transaction_cost(
-        turnover: pd.Series,
-        cost_rate: float = 0.001,
+    turnover: pd.Series,
+    cost_rate: float = 0.001,
 ) -> pd.Series:
     """Calculate transaction costs from one-way turnover."""
 
     if not np.isfinite(cost_rate) or cost_rate < 0:
         raise ValueError("cost_rate must be finite and non-negative")
 
-    valid_turnover = turnover.dropna()
     transaction_cost = turnover * cost_rate
     transaction_cost.name = "transaction_cost"
 
@@ -99,10 +91,7 @@ def calculate_gross_return(
     ):
         raise ValueError("all inputs must have identical indexes")
 
-    gross_return = (
-        equity_weight * equity_returns
-        + (1.0 - equity_weight) * risk_free_returns
-    )
+    gross_return = equity_weight * equity_returns + (1.0 - equity_weight) * risk_free_returns
 
     gross_return.name = "gross_return"
     return gross_return
@@ -146,11 +135,13 @@ def run_zero_one_backtest(
         transaction_cost,
     )
 
-    return pd.DataFrame({
-        "state": states,
-        "equity_weight": equity_weight,
-        "turnover": turnover,
-        "transaction_cost": transaction_cost,
-        "gross_return": gross_return,
-        "net_return": net_return,
-    })
+    return pd.DataFrame(
+        {
+            "state": states,
+            "equity_weight": equity_weight,
+            "turnover": turnover,
+            "transaction_cost": transaction_cost,
+            "gross_return": gross_return,
+            "net_return": net_return,
+        }
+    )

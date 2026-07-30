@@ -78,15 +78,12 @@ def six_month_refit_states(
 
         if verbose:
             print(
-                f"[refit {refit_number}] fitting model at "
-                f"{refit_date.date()}...",
+                f"[refit {refit_number}] fitting model at {refit_date.date()}...",
                 flush=True,
             )
 
         training_start = refit_position - training_length + 1
-        training = features.iloc[
-            training_start : refit_position + 1
-        ]
+        training = features.iloc[training_start : refit_position + 1]
 
         processed_training = standardize_from_training_window(
             training,
@@ -101,9 +98,7 @@ def six_month_refit_states(
         ).fit(processed_training.to_numpy())
 
         model.relabel_by_cumulative_return(
-            returns.iloc[
-                training_start : refit_position + 1
-            ].to_numpy()
+            returns.iloc[training_start : refit_position + 1].to_numpy()
         )
 
         next_refit_date = refit_date + pd.DateOffset(months=6)
@@ -122,9 +117,7 @@ def six_month_refit_states(
                 position - training_length + 1,
             )
 
-            raw_window = features.iloc[
-                window_start : position + 1
-            ]
+            raw_window = features.iloc[window_start : position + 1]
 
             processed_window = standardize_from_training_window(
                 training,
@@ -142,8 +135,7 @@ def six_month_refit_states(
             completed_date = features.index[block_stop - 1]
 
             print(
-                f"[refit {refit_number}] completed signals through "
-                f"{completed_date.date()}",
+                f"[refit {refit_number}] completed signals through {completed_date.date()}",
                 flush=True,
             )
 
