@@ -1,11 +1,11 @@
-"""Correctness tests for JumpModel, written before the implementation.
+"""Correctness and reference-parity tests for JumpModel.
 
-These tests define what "correct" means for `_dp_state_path` and `fit`
-(both left as documented stubs in jump.py). They are expected to fail with
-NotImplementedError until those methods are implemented by hand.
+The tests cover dynamic programming, centroid updates, model fitting,
+state relabelling, prediction, and agreement with the official
+``jumpmodels`` package.
 
-Full-sample z-scoring is used here (never in a backtest / reported OOS
-number) purely to keep these unit tests simple and self-contained.
+Full-sample standardization is used only for self-contained unit tests,
+never for reported out-of-sample results.
 """
 
 from __future__ import annotations
@@ -66,7 +66,9 @@ def random_features():
     return rng.normal(size=(120, 3))
 
 
-# ---- (a) lower penalty switches more than higher penalty -------------------
+# ---------------------------------------------------------------------------
+# End-to-end model behavior
+# ---------------------------------------------------------------------------
 
 
 def test_lower_penalty_switches_more_than_higher_penalty():
@@ -79,9 +81,6 @@ def test_lower_penalty_switches_more_than_higher_penalty():
     assert n_switches(model_low.labels_) > n_switches(model_high.labels_)
 
 
-# ---- (b) huge penalty forces zero switches ---------------------------------
-
-
 def test_huge_penalty_forces_zero_switches():
     returns, _ = simulate_two_regime_returns()
     X = zscore(simple_features_from_returns(returns))
@@ -91,21 +90,20 @@ def test_huge_penalty_forces_zero_switches():
     assert n_switches(model.labels_) == 0
 
 
-# ---- (c) >90% state accuracy on a simulated two-regime series -------------
-
-
 def test_state_accuracy_on_simulated_two_regime_series():
     returns, true_labels = simulate_two_regime_returns()
     X = zscore(simple_features_from_returns(returns))
 
     model = JumpModel(n_states=2, jump_penalty=10.0, n_init=10, random_state=0).fit(X)
-    model.relabel_by_feature(X, feature_idx=0)  # state 0 = high-mean = calm bull
+    model.relabel_by_feature(feature_idx=0)  # state 0 = high-mean = calm bull
 
     accuracy = np.mean(model.labels_ == true_labels)
     assert accuracy > 0.90, f"accuracy {accuracy:.3f} did not exceed 90%"
 
 
-# ---- (d) DP path objective <= greedy online path objective ----------------
+# ---------------------------------------------------------------------------
+# Dynamic programming
+# ---------------------------------------------------------------------------
 
 
 def test_dp_path_beats_or_matches_greedy_path(random_features):
@@ -125,42 +123,6 @@ def test_dp_path_beats_or_matches_greedy_path(random_features):
 
     assert dp_cost == pytest.approx(jump_objective(X, centroids, dp_path, jump_penalty))
     assert dp_cost <= greedy_cost + 1e-9
-
-
-# ---- (e) gate against the `jumpmodels` PyPI reference implementation ------
-
-
-def test_matches_jumpmodels_reference():
-    from jumpmodels.jump import JumpModel as ReferenceJumpModel
-
-    returns, _ = simulate_two_regime_returns()
-    X = zscore(simple_features_from_returns(returns))
-
-    ours = JumpModel(
-        n_states=2,
-        jump_penalty=10.0,
-        max_iter=50,
-        n_init=10,
-        random_state=0,
-    ).fit(X)
-
-    reference = ReferenceJumpModel(
-        n_components=2,
-        jump_penalty=10.0,
-        cont=False,
-        mode_loss=True,
-        max_iter=50,
-        n_init=10,
-        random_state=0,
-    ).fit(X, sort_by=None)
-
-    # State numbers are arbitrary, so compare both possible alignments.
-    direct_agreement = np.mean(ours.labels_ == reference.labels_)
-    reversed_agreement = np.mean(ours.labels_ == (1 - reference.labels_))
-    agreement = max(direct_agreement, reversed_agreement)
-
-    assert agreement > 0.99
-    assert ours.inertia_ == pytest.approx(reference.val_)
 
 
 def test_dp_simple_switch():
@@ -341,6 +303,11 @@ def test_dp_rejects_nan():
         model._dp_state_path(X, centroids)
 
 
+# ---------------------------------------------------------------------------
+# Centroid updates
+# ---------------------------------------------------------------------------
+
+
 def test_update_centroids_uses_state_means():
     X = np.array(
         [
@@ -449,6 +416,11 @@ def test_update_centroids_uses_distinct_reseeds():
 
     # Empty states should receive different observations.
     assert not np.array_equal(updated[1], updated[2])
+
+
+# ---------------------------------------------------------------------------
+# Model fitting
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -597,6 +569,21 @@ def test_fitted_labels_match_dp_path_for_fitted_centroids():
     assert model.inertia_ == pytest.approx(expected_cost)
 
 
+# ---------------------------------------------------------------------------
+# Prediction and state relabelling
+# ---------------------------------------------------------------------------
+
+
+def test_predict_requires_fitted_model():
+    model = JumpModel()
+
+    with pytest.raises(
+        RuntimeError,
+        match="must be fitted",
+    ):
+        model.predict(np.zeros((1, 1)))
+
+
 def test_relabel_by_cumulative_return():
     model = JumpModel(n_states=2)
     model.centroids_ = np.array([[10.0], [20.0]])
@@ -614,6 +601,44 @@ def test_relabel_by_cumulative_return():
         model.centroids_,
         np.array([[20.0], [10.0]]),
     )
+
+
+# ---------------------------------------------------------------------------
+# Reference-package parity
+# ---------------------------------------------------------------------------
+
+
+def test_matches_jumpmodels_reference():
+    from jumpmodels.jump import JumpModel as ReferenceJumpModel
+
+    returns, _ = simulate_two_regime_returns()
+    X = zscore(simple_features_from_returns(returns))
+
+    ours = JumpModel(
+        n_states=2,
+        jump_penalty=10.0,
+        max_iter=50,
+        n_init=10,
+        random_state=0,
+    ).fit(X)
+
+    reference = ReferenceJumpModel(
+        n_components=2,
+        jump_penalty=10.0,
+        cont=False,
+        mode_loss=True,
+        max_iter=50,
+        n_init=10,
+        random_state=0,
+    ).fit(X, sort_by=None)
+
+    # State numbers are arbitrary, so compare both possible alignments.
+    direct_agreement = np.mean(ours.labels_ == reference.labels_)
+    reversed_agreement = np.mean(ours.labels_ == (1 - reference.labels_))
+    agreement = max(direct_agreement, reversed_agreement)
+
+    assert agreement > 0.99
+    assert ours.inertia_ == pytest.approx(reference.val_)
 
 
 def test_online_states_match_jumpmodels_reference():

@@ -18,25 +18,26 @@ import numpy as np
 
 
 def kmeans_plusplus_init(X: np.ndarray, n_states: int, rng: np.random.Generator) -> np.ndarray:
-    """k-means++ seeding: pick initial centroids spread out across ``X``.
+    """Initialize centroids using k-means++.
 
-    Standard k-means++ (Arthur & Vassilvitskii, 2007): the first centroid
-    is a uniformly random row of ``X``; each subsequent centroid is drawn
-    with probability proportional to its squared distance to the nearest
-    centroid chosen so far.
+    The first centroid is sampled uniformly from ``X``. Each subsequent
+    centroid is sampled with probability proportional to its squared
+    distance from the nearest previously selected centroid.
 
     Parameters
     ----------
     X:
-        (T, n_features) array of standardized features.
+        Standardized feature matrix with shape
+        ``(n_observations, n_features)``.
     n_states:
-        Number of centroids to choose.
+        Number of centroids to initialize.
     rng:
-        A numpy random Generator, for reproducibility under ``random_state``.
+        NumPy random generator used for reproducible sampling.
 
     Returns
     -------
-    (n_states, n_features) array of initial centroids.
+    np.ndarray
+        Initial centroids with shape ``(n_states, n_features)``.
     """
     n_obs = X.shape[0]
     centroids = np.empty((n_states, X.shape[1]), dtype=float)
@@ -64,13 +65,28 @@ def kmeans_plusplus_init(X: np.ndarray, n_states: int, rng: np.random.Generator)
 def jump_objective(
     X: np.ndarray, centroids: np.ndarray, labels: np.ndarray, jump_penalty: float
 ) -> float:
-    """The penalized k-means objective for a given path and centroids.
+    """Evaluate the jump-model objective for a fixed state path.
 
-        sum_t ||x_t - theta_{s_t}||^2 + lambda * sum_{t>=1} 1{s_t != s_{t-1}}
+    The objective is
 
-    A plain evaluation helper (not part of fitting): useful for comparing
-    candidate paths -- e.g. the DP-optimal path against a greedy
-    approximation -- under the same centroids and penalty.
+    ``0.5 * sum_t ||x_t - theta_{s_t}||^2
+    + lambda * sum_{t>=1} 1{s_t != s_{t-1}}``.
+
+    Parameters
+    ----------
+    X:
+        Feature matrix with shape ``(n_observations, n_features)``.
+    centroids:
+        State centroids with shape ``(n_states, n_features)``.
+    labels:
+        State path with shape ``(n_observations,)``.
+    jump_penalty:
+        Nonnegative penalty applied to each state change.
+
+    Returns
+    -------
+    float
+        Objective value for the supplied path and centroids.
     """
     X = np.asarray(X, dtype=float)
     centroids = np.asarray(centroids, dtype=float)
@@ -82,30 +98,36 @@ def jump_objective(
 
 
 class JumpModel:
-    """Statistical jump model for discrete market regime detection.
+    """Discrete statistical jump model for market regime detection.
+
+    The model alternates between dynamic-programming state assignment
+    and centroid updates, retaining the best solution across multiple
+    initializations.
 
     Parameters
     ----------
     n_states:
-        Number of regimes ``K``.
+        Number of regimes.
     jump_penalty:
-        The switching penalty ``lambda`` in the objective above. Larger
-        values produce more persistent (slower-switching) regime paths.
+        Nonnegative penalty applied to each state change. Larger values
+        produce more persistent state paths.
     max_iter:
-        Maximum number of centroid/state coordinate-descent iterations
-        per restart.
+        Maximum number of coordinate-descent iterations per restart.
     n_init:
-        Number of random (k-means++) restarts; the restart with the
-        lowest objective value is kept.
+        Number of k-means++ initializations.
     random_state:
-        Seed for reproducible initialization.
+        Seed used for reproducible centroid initialization.
 
-    Attributes (set by ``fit``)
-    ----------------------------
-    centroids_ : (n_states, n_features) array
-    labels_ : (T,) int array, the in-sample optimal state path
-    n_iter_ : int, iterations used by the winning restart
-    inertia_ : float, the winning restart's objective value
+    Attributes
+    ----------
+    centroids_:
+        Fitted centroids with shape ``(n_states, n_features)``.
+    labels_:
+        In-sample state path with shape ``(n_observations,)``.
+    n_iter_:
+        Number of iterations used by the selected restart.
+    inertia_:
+        Objective value of the selected solution.
     """
 
     def __init__(
@@ -128,42 +150,42 @@ class JumpModel:
         self.inertia_: float | None = None
 
     def _dp_state_path(self, X: np.ndarray, centroids: np.ndarray) -> tuple[np.ndarray, float]:
-        """Solve for the optimal state path given fixed centroids.
+        """Find the optimal state path for fixed centroids.
 
-        Must find the path ``s_0, ..., s_{T-1}`` minimizing
+        The method minimizes
 
-            sum_t 0.5 * ||x_t - theta_{s_t}||^2 + lambda * sum_{t>=1} 1{s_t != s_{t-1}}
+        ``0.5 * sum_t ||x_t - theta_{s_t}||^2
+        + lambda * sum_{t>=1} 1{s_t != s_{t-1}}``
 
-        via dynamic programming:
+        using the dynamic-programming recursion
 
-            V[0, k] = 0.5 * ||x_0 - theta_k||^2
+        ``V[0, k] = 0.5 * ||x_0 - theta_k||^2``
 
-            V[t, k] = 0.5 * ||x_t - theta_k||^2 + min(
-                V[t-1, k],
-                min_j V[t-1, j] + lambda,
-            )
+        and
 
-        Complexity requirement: O(T*K), not O(T*K^2) -- computing
-        ``min_j V[t-1, j]`` once per row of ``V`` (rather than once per
-        (t, k) pair) is what keeps this linear in K instead of quadratic.
+        ``V[t, k] = 0.5 * ||x_t - theta_k||^2
+        + min(V[t-1, k], min_j V[t-1, j] + lambda)``.
+
+        The minimum over previous states is computed once per observation,
+        giving complexity ``O(n_observations * n_states)``.
 
         Parameters
         ----------
         X:
-            (T, n_features) standardized feature matrix.
+            Standardized feature matrix with shape
+            ``(n_observations, n_features)``.
         centroids:
-            (K, n_features) current centroid estimates.
+            Current centroid estimates with shape
+            ``(n_states, n_features)``.
 
         Returns
         -------
         path:
-            (T,) int array, the optimal state assignment per row of ``X``.
+            Optimal state path with shape ``(n_observations,)``.
         cost:
-            The objective value achieved by ``path`` (fit cost + total
-            switching penalty), for comparing restarts / convergence.
+            Objective value attained by the optimal path.
         """
 
-        # First, ensure proper arrays created
         X = np.asarray(X, dtype=float)
         centroids = np.asarray(centroids, dtype=float)
 
@@ -191,7 +213,6 @@ class JumpModel:
         if not np.isfinite(self.jump_penalty) or self.jump_penalty < 0:
             raise ValueError("jump_penalty must be finite and non-negative")
 
-        # At each date t and state k, compute observation cost
         observation_costs = 0.5 * np.sum(
             (X[:, None, :] - centroids[None, :, :]) ** 2,
             axis=2,
@@ -211,7 +232,6 @@ class JumpModel:
         value[0] = observation_costs[0]
         predecessor[0] = -1
 
-        # Begin the recurrence relation
         for t in range(1, n_obs):
             previous_values = value[t - 1]
 
@@ -233,7 +253,6 @@ class JumpModel:
         last_state = int(np.argmin(value[-1]))
         best_cost = float(value[-1, last_state])
 
-        # Backtrack to determine states
         path = np.empty(n_obs, dtype=int)
         path[-1] = last_state
         for t in range(n_obs - 1, 0, -1):
@@ -247,12 +266,8 @@ class JumpModel:
         labels: np.ndarray,
         old_centroids: np.ndarray,
     ) -> np.ndarray:
-        """Update centroids from fixed state assignment
-        Nonempty states updated to mean of their assigned observations.
-        Empty states temporarily left at previous centroid.
-        """
+        """Update centroids and reseed states with no assigned observations."""
 
-        # Ensure data types are correct
         X = np.asarray(X, dtype=float)
         labels = np.asarray(labels, dtype=int)
         old_centroids = np.asarray(old_centroids, dtype=float)
@@ -287,33 +302,21 @@ class JumpModel:
         return new_centroids
 
     def fit(self, X: np.ndarray) -> JumpModel:
-        """Fit the jump model to ``X`` by coordinate descent.
+        """Fit the model using multi-start coordinate descent.
 
-        Coordinate descent is run from ``n_init`` k-means++ initializations.
-        The solution with the lowest final objective is retained.
-
-        1. For each of ``n_init`` restarts (use ``kmeans_plusplus_init``
-           for initial centroids, seeded from ``self.random_state``):
-           a. Alternate, up to ``max_iter`` times or until the state path
-              stops changing:
-              - state step: call ``self._dp_state_path(X, centroids)``;
-              - centroid step: recompute each centroid as the mean of the
-                rows of ``X`` currently assigned to it;
-              - if a state ends up with no rows assigned, reseed its
-                centroid (e.g. to the row with the largest cost under the
-                current assignment) rather than leaving it empty.
-           b. Track that restart's final objective value.
-        2. Keep the restart with the lowest objective value; set
-           ``self.centroids_``, ``self.labels_``, ``self.n_iter_``,
-           ``self.inertia_`` from it.
-        3. Return ``self`` (so ``model.fit(X).labels_`` works).
+        Each restart alternates between dynamic-programming state assignment
+        and centroid updates. The solution with the lowest objective is retained.
 
         Parameters
         ----------
         X:
-            (T, n_features) standardized feature matrix. Standardization
-            is the caller's responsibility (see :mod:`regimejump.online`
-            for the look-ahead-free version).
+            Standardized feature matrix with shape
+            ``(n_observations, n_features)``.
+
+        Returns
+        -------
+        JumpModel
+            The fitted model.
         """
         X = np.asarray(X, dtype=float)
 
@@ -401,37 +404,48 @@ class JumpModel:
         return self
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        """Assign the optimal (batch, non-causal) state path for ``X``.
+        """Decode the optimal batch state path for new observations.
 
-        Requires the model to already be fitted (uses ``self.centroids_``
-        and ``self.jump_penalty`` in a fresh call to ``_dp_state_path``).
-        For genuinely online, causal predictions on new data use
-        :func:`regimejump.online.greedy_online_path` instead.
-        """
-        if self.centroids_ is None:
-            raise RuntimeError("JumpModel must be fitted before calling predict()")
-        path, _ = self._dp_state_path(np.asarray(X, dtype=float), self.centroids_)
-        return path
-
-    def relabel_by_feature(self, X: np.ndarray, feature_idx: int = 0) -> JumpModel:
-        """Relabel fitted states so state 0 is the high-mean regime.
-
-        States from coordinate descent are arbitrarily ordered (whichever
-        restart / initialization happened to land on them). This reorders
-        ``centroids_`` and remaps ``labels_`` so that state 0 always has
-        the highest centroid value on ``feature_idx`` (by convention, an
-        EWM-mean-of-returns feature, so state 0 is "bull"/calm and higher
-        states are progressively more bearish/volatile).
+        This method uses the full supplied sequence and is therefore
+        non-causal.
 
         Parameters
         ----------
         X:
-            Unused directly; kept in the signature for API symmetry with
-            ``fit``/``predict`` and potential future feature-based
-            relabeling rules. Present implementation only needs
-            ``centroids_``.
+            Standardized feature matrix with shape
+            ``(n_observations, n_features)``.
+
+        Returns
+        -------
+        np.ndarray
+            Optimal state path with shape ``(n_observations,)``.
+        """
+
+        if self.centroids_ is None:
+            raise RuntimeError("JumpModel must be fitted before calling predict()")
+
+        path, _ = self._dp_state_path(
+            np.asarray(X, dtype=float),
+            self.centroids_,
+        )
+
+        return path
+
+    def relabel_by_feature(self, feature_idx: int = 0) -> JumpModel:
+        """Order states by descending centroid value for one feature.
+
+        State 0 is assigned to the state with the highest centroid value
+        for ``feature_idx``.
+
+        Parameters
+        ----------
         feature_idx:
-            Column of ``centroids_`` to sort on, descending.
+            Feature column used to order the centroids.
+
+        Returns
+        -------
+        JumpModel
+            The relabelled model.
         """
         if self.centroids_ is None or self.labels_ is None:
             raise RuntimeError("JumpModel must be fitted before relabeling")
@@ -448,7 +462,22 @@ class JumpModel:
         self,
         returns: np.ndarray,
     ) -> JumpModel:
-        """Relabel states by decreasing cumulative return."""
+        """Order states by decreasing aggregate return.
+
+        Returns are summed over observations assigned to each state. State 0
+        is assigned to the state with the highest aggregate return.
+
+        Parameters
+        ----------
+        returns:
+            Return series aligned one-to-one with the fitted state labels.
+
+        Returns
+        -------
+        JumpModel
+            The relabelled model.
+        """
+
         if self.centroids_ is None or self.labels_ is None:
             raise RuntimeError("JumpModel must be fitted before relabeling")
 
