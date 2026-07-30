@@ -1,3 +1,5 @@
+"""Tests for portfolio performance metrics."""
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -12,6 +14,10 @@ from regimejump.metrics import (
     maximum_drawdown,
     sharpe_ratio,
 )
+
+# ---------------------------------------------------------------------------
+# Wealth and drawdowns
+# ---------------------------------------------------------------------------
 
 
 def test_cumulative_wealth_compounds_simple_returns():
@@ -50,6 +56,11 @@ def test_drawdown_and_maximum_drawdown():
     assert drawdown.iloc[5] == pytest.approx(0.0)
 
     assert maximum_drawdown(wealth) == pytest.approx(-0.25)
+
+
+# ---------------------------------------------------------------------------
+# Annualized and risk-adjusted performance
+# ---------------------------------------------------------------------------
 
 
 def test_annualized_return_compounds_returns():
@@ -142,6 +153,11 @@ def test_calmar_ratio_rejects_zero_drawdown():
         calmar_ratio(returns)
 
 
+# ---------------------------------------------------------------------------
+# Tail risk
+# ---------------------------------------------------------------------------
+
+
 def test_expected_shortfall():
     returns = pd.Series(
         [
@@ -186,3 +202,14 @@ def test_expected_shortfall_rejects_invalid_alpha():
             returns,
             alpha=0.0,
         )
+
+
+def test_drawdown_includes_initial_wealth():
+    wealth = pd.Series([0.80, 0.88])
+
+    result = maximum_drawdown(
+        wealth,
+        initial_wealth=1.0,
+    )
+
+    assert result == pytest.approx(-0.20)

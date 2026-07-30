@@ -36,11 +36,19 @@ def cumulative_wealth(
 
 def drawdown_series(
     wealth: pd.Series,
+    initial_wealth: float | None = None,
 ) -> pd.Series:
     """Calculate percentage drawdown from the running wealth peak."""
     valid_wealth = wealth.dropna().astype(float)
 
     running_peak = valid_wealth.cummax()
+
+    if initial_wealth is not None:
+        if not np.isfinite(initial_wealth) or initial_wealth <= 0:
+            raise ValueError("initial_wealth must be positive and finite")
+
+        running_peak = running_peak.clip(lower=initial_wealth)
+
     valid_drawdown = valid_wealth / running_peak - 1.0
 
     drawdown = pd.Series(
@@ -57,14 +65,18 @@ def drawdown_series(
 
 def maximum_drawdown(
     wealth: pd.Series,
+    initial_wealth: float | None = None,
 ) -> float:
-    """Return the most negative drawdown."""
-    drawdown = drawdown_series(wealth).dropna()
+    """Return the largest peak-to-trough loss in a wealth series."""
+    drawdowns = drawdown_series(
+        wealth,
+        initial_wealth=initial_wealth,
+    )
 
-    if drawdown.empty:
+    if drawdowns.dropna().empty:
         raise ValueError("wealth must contain at least one valid value")
 
-    return float(drawdown.min())
+    return float(drawdowns.min())
 
 
 def annualized_return(
@@ -142,7 +154,10 @@ def calmar_ratio(
     """Calculate annualized compound return divided by maximum drawdown."""
 
     wealth = cumulative_wealth(returns)
-    max_drawdown = maximum_drawdown(wealth)
+    max_drawdown = maximum_drawdown(
+        wealth,
+        initial_wealth=1.0,
+    )
 
     if max_drawdown == 0:
         raise ValueError("Calmar ratio is undefined when maximum drawdown is zero")
