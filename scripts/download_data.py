@@ -1,12 +1,10 @@
-"""Download daily SPX, NDX, and DAX price history from Yahoo Finance and cache as parquet.
+"""Download and cache the public market and Treasury data.
+
+Market indices are downloaded from Yahoo Finance and the US three-month
+Treasury-bill discount yield is downloaded from FRED.
 
 Usage:
-    python scripts/download_data.py [--out data] [--start 1990-01-01] [--force]
-
-Note: this originally targeted Stooq via pandas-datareader (no API key needed),
-but Stooq now gates every request -- including the CSV download endpoint --
-behind a client-side JS proof-of-work challenge that plain HTTP clients cannot
-pass. yfinance (Yahoo Finance) is used instead; it requires no API key either.
+    python scripts/download_data.py --start 1970-01-01 --end 2024-01-01
 """
 
 from __future__ import annotations

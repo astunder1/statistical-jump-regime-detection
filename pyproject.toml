@@ -5,10 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "regimejump"
 version = "0.1.0"
-description = "Statistical jump models for market regime detection (Shu, Yu & Kolm 2024 replication + online extensions)"
+description = "Statistical jump models for market regime detection and public-data replication"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
 dependencies = [
     "numpy>=1.24",
     "pandas>=2.0",

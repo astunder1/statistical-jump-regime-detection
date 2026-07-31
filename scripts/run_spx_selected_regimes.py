@@ -1,4 +1,4 @@
-"""Generate SPX states with monthly jump-penalty selection."""
+"""Generate online SPX states using monthly jump-penalty selection."""
 
 from __future__ import annotations
 

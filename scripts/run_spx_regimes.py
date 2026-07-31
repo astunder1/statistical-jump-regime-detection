@@ -1,4 +1,4 @@
-"""Generate exploratory SPX regimes with six-month model refitting."""
+"""Prepare SPX features and fixed-penalty baseline regimes."""
 
 from __future__ import annotations
 
