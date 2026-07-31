@@ -1,3 +1,5 @@
+"""Tests for risk-free-rate conversion and date alignment."""
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -111,3 +113,20 @@ def test_alignment_fills_missing_quote_from_past():
     expected = discount_yield_to_daily_return(expected_yields)
 
     pd.testing.assert_series_equal(result, expected)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"maturity_days": 0}, "maturity_days"),
+        ({"trading_days": 0}, "trading_days"),
+    ],
+)
+def test_conversion_rejects_invalid_periods(kwargs, message):
+    yields = pd.Series([5.0])
+
+    with pytest.raises(ValueError, match=message):
+        discount_yield_to_daily_return(
+            yields,
+            **kwargs,
+        )

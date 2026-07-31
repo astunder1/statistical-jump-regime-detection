@@ -1,4 +1,4 @@
-"""Utilities for preparing risk-free returns."""
+"""Treasury-bill yield conversion and causal date alignment."""
 
 from __future__ import annotations
 
@@ -10,7 +10,18 @@ def discount_yield_to_daily_return(
     maturity_days: int = 91,
     trading_days: int = 252,
 ) -> pd.Series:
-    """Convert a Treasury-bill discount yield into a daily return."""
+    """Convert annual Treasury-bill discount yields to daily returns.
+
+    Yields are quoted as annual percentages on a 360-day discount basis.
+    The implied holding-period return is converted to an equivalent
+    return per trading day.
+    """
+
+    if maturity_days <= 0:
+        raise ValueError("maturity_days must be positive")
+
+    if trading_days <= 0:
+        raise ValueError("trading_days must be positive")
 
     discount_rate = annual_discount_yield_pct / 100.0
 
@@ -27,7 +38,11 @@ def risk_free_returns_for_dates(
     annual_discount_yield_pct: pd.Series,
     dates: pd.DatetimeIndex,
 ) -> pd.Series:
-    """Create daily risk-free returns for the requested trading dates."""
+    """Align risk-free returns to trading dates without look-ahead.
+
+    Each requested date receives the most recently available Treasury
+    yield. Dates before the first available quote remain missing.
+    """
 
     annual_discount_yield_pct = annual_discount_yield_pct.sort_index().ffill()
 
