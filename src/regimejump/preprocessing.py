@@ -11,7 +11,13 @@ def standardize_from_training_window(
     data: pd.DataFrame,
     eps: float = 1e-12,
 ) -> pd.DataFrame:
-    """Standardize data using statistics estimated only from training."""
+    """Standardize data using statistics from a fixed training window.
+
+    Column means and population standard deviations (``ddof=0``) are
+    estimated from ``training`` and then applied unchanged to ``data``.
+    Standard deviations are floored at ``eps`` so constant training
+    features remain finite.
+    """
     if not isinstance(training, pd.DataFrame):
         raise TypeError("training must be a pandas DataFrame")
 

@@ -1,3 +1,5 @@
+"""Tests for fixed training-window standardization."""
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -47,6 +49,27 @@ def test_training_standardizes_to_zero_mean_and_unit_variance():
         result.std(ddof=0).to_numpy(),
         1.0,
     )
+
+
+def test_constant_training_feature_remains_finite():
+    training = pd.DataFrame(
+        {
+            "constant": [2.0, 2.0, 2.0],
+        }
+    )
+    data = pd.DataFrame(
+        {
+            "constant": [2.0, 3.0],
+        }
+    )
+
+    result = standardize_from_training_window(
+        training,
+        data,
+    )
+
+    assert np.isfinite(result.to_numpy()).all()
+    assert result.iloc[0, 0] == pytest.approx(0.0)
 
 
 def test_future_data_does_not_affect_earlier_transformations():
