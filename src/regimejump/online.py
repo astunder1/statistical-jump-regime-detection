@@ -1,16 +1,12 @@
-"""Look-ahead-free standardization and one-step-ahead online regime decisions.
+"""Causal standardization and online regime inference.
 
-Two independent pieces:
+The module provides expanding-window standardization and two online
+inference rules for fixed regime centroids:
 
-- :func:`expanding_standardize` turns raw features into z-scores using only
-  data available up to and including each row -- safe for any out-of-sample
-  evaluation, unlike full-sample standardization (which is only fine inside
-  unit tests).
-- :func:`online_state_decision` / :func:`greedy_online_path` implement the
-  one-step online decision rule for a *fitted* jump model (fixed centroids):
-  stay in the previous state unless another centroid is closer by more than
-  the jump penalty. This is a greedy approximation to the full DP path,
-  useful for genuinely online (no-relabeling-the-past) evaluation.
+- a greedy rule that updates the state one observation at a time;
+- a rolling dynamic-programming rule that solves over a trailing window.
+
+Neither inference rule changes states assigned to earlier observations.
 """
 
 from __future__ import annotations
@@ -31,10 +27,8 @@ def expanding_standardize(
 
     z_t = (x_t - mean(x_0..x_t)) / std(x_0..x_t)
 
-    Only past and current observations are used at each row, so this is
-    safe for out-of-sample use (no look-ahead). Rows before ``min_periods``
-    observations are NaN. A tiny floor ``eps`` on the rolling std avoids
-    division by zero when a window is (numerically) constant.
+    Rows before ``min_periods`` observations are NaN. The standard
+    deviation is floored at ``eps`` to avoid division by zero.
     """
     mean = data.expanding(min_periods=min_periods).mean()
     std = data.expanding(min_periods=min_periods).std(ddof=ddof)
@@ -118,7 +112,28 @@ def rolling_dp_online_path(
     jump_penalty: float,
     lookback: int = 3000,
 ) -> np.ndarray:
-    """Infer each daily state using DP over the trailing feature window."""
+    """Infer states causally using dynamic programming over trailing windows.
+
+    At each observation, the jump-model path is recomputed using at most
+    ``lookback`` observations ending at the current row. Only the final
+    state of that path is retained, so later observations cannot revise
+    previously reported states.
+
+    Parameters
+    ----------
+    X:
+        ``(T, n_features)`` standardized feature matrix.
+    centroids:
+        ``(K, n_features)`` fixed regime centroids.
+    jump_penalty:
+        Non-negative switching penalty.
+    lookback:
+        Maximum number of observations included in each DP window.
+
+    Returns
+    -------
+    ``(T,)`` integer array containing the causal state sequence.
+    """
     X = np.asarray(X, dtype=float)
     centroids = np.asarray(centroids, dtype=float)
 
