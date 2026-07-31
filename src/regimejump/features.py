@@ -1,16 +1,10 @@
-"""EWM feature engineering for statistical jump models.
+"""Feature engineering for statistical jump models.
 
-For a daily return series, builds three exponentially-weighted statistics
-at each of a set of halflives (5, 10, 21 trading days by default):
+This module provides a general collection of exponentially weighted
+return features and the three-feature specification used in the paper.
 
-- EWM mean of returns
-- EWM downside deviation: EWM standard deviation of ``min(r, 0)``
-- EWM mean of ``|r|``
-
-This module only computes features from a *given* window of data; it does
-not decide what's "available" at time t. Callers that need a look-ahead-free
-standardization for out-of-sample evaluation should use
-:mod:`regimejump.online`, which builds on top of these raw features.
+Feature calculation is separate from standardization and causal
+out-of-sample inference.
 """
 
 from __future__ import annotations
@@ -21,8 +15,6 @@ import numpy as np
 import pandas as pd
 
 DEFAULT_HALFLIVES: tuple[int, ...] = (5, 10, 21)
-
-PAPER_HALFLIVES: tuple[int, ...] = (20, 60, 120)
 
 PAPER_FEATURE_NAMES: tuple[str, ...] = (
     "downside_dev_10",
@@ -106,7 +98,12 @@ def compute_paper_features(
     returns: pd.Series,
     min_periods: int = 1,
 ) -> pd.DataFrame:
-    """Compute the feature specification used by Shu et al. (2024)."""
+    """Compute the three features used in the paper replication.
+
+    The features are downside deviation with halflife 10 and Sortino
+    ratios with halflives 20 and 60. Downside deviation is the square
+    root of the EWM second moment of negative returns.
+    """
     if not isinstance(returns, pd.Series):
         raise TypeError("returns must be a pandas Series")
 

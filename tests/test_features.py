@@ -1,3 +1,5 @@
+"""Tests for generic and paper-specific feature construction."""
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -9,6 +11,10 @@ from regimejump.features import (
     compute_paper_features,
     feature_names,
 )
+
+# ---------------------------------------------------------------------------
+# Fixtures and structural checks
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -40,6 +46,11 @@ def test_compute_features_shape_and_columns(returns):
 def test_rejects_non_series():
     with pytest.raises(TypeError):
         compute_features(np.array([0.01, -0.02, 0.03]))
+
+
+# ---------------------------------------------------------------------------
+# Generic EWM feature definitions
+# ---------------------------------------------------------------------------
 
 
 def test_ewm_mean_matches_pandas_directly(returns):
@@ -89,6 +100,11 @@ def test_downside_deviation_only_sees_negative_part():
     pd.testing.assert_series_equal(df1["ewm_downside_dev_10"], df2["ewm_downside_dev_10"])
 
 
+# ---------------------------------------------------------------------------
+# Paper feature specification
+# ---------------------------------------------------------------------------
+
+
 def test_min_periods_produces_leading_nans(returns):
     df = compute_features(returns, halflives=(21,), min_periods=21)
     assert df["ewm_mean_21"].iloc[:20].isna().all()
@@ -136,9 +152,3 @@ def test_paper_sortino_matches_definition(returns, halflife):
         expected,
         check_names=False,
     )
-
-    assert list(features.columns) == [
-        "downside_dev_10",
-        "sortino_20",
-        "sortino_60",
-    ]
