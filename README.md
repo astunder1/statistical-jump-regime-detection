@@ -58,6 +58,24 @@ The original study uses proprietary index and risk-free-rate data. This reposito
 
 The complete comparison is available in [`results/tables/spx_comparison.csv`](results/tables/spx_comparison.csv).
 
+## Sentiment extension
+
+An exploratory extension compares the paper’s price features with a
+macro-news sentiment momentum feature. The specification is explored on
+the S&P 500 and then tested without retuning on the Nasdaq-100.
+
+The sentiment series is derived from proprietary TRNA data and is not
+distributed in this repository. Users with access to compatible data
+can provide `data/Eq_macro_ns.csv` and run:
+
+```powershell
+python scripts/prepare_sentiment_data.py --market spx
+python scripts/run_sentiment_ablation.py
+python scripts/run_sentiment_comparison.py --market spx
+
+python scripts/prepare_sentiment_data.py --market nasdaq100
+python scripts/run_sentiment_comparison.py --market nasdaq100
+
 ## Installation
 
 ```powershell

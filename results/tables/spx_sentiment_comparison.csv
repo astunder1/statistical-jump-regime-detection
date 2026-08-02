@@ -1,0 +1,10 @@
+period,model,observations,annualized_return,annualized_volatility,sharpe,maximum_drawdown,annualized_turnover,equity_exposure,allocation_changes
+full_sample,price_only,1926,0.074761,0.113144,0.621078,-0.212473,0.981308,0.752336,15
+full_sample,price_plus_momentum,1926,0.081073,0.113059,0.673312,-0.153013,1.11215,0.735202,17
+full_sample,buy_and_hold,1926,0.115261,0.185228,0.637558,-0.337905,0.0,1.0,0
+pre_covid,price_only,1277,0.054679,0.106934,0.452311,-0.212473,1.184025,0.805012,12
+pre_covid,price_plus_momentum,1277,0.063766,0.099782,0.563266,-0.111675,1.381363,0.753328,14
+pre_covid,buy_and_hold,1277,0.113971,0.134721,0.790002,-0.193635,0.0,1.0,0
+covid_and_after,price_only,649,0.115399,0.124513,0.910505,-0.127023,0.582435,0.64869,3
+covid_and_after,price_plus_momentum,649,0.115952,0.135498,0.851087,-0.153013,0.582435,0.699538,3
+covid_and_after,buy_and_hold,649,0.117802,0.257256,0.54826,-0.337905,0.0,1.0,0

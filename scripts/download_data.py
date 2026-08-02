@@ -1,7 +1,8 @@
 """Download and cache the public market and Treasury data.
 
-Market indices are downloaded from Yahoo Finance and the US three-month
-Treasury-bill discount yield is downloaded from FRED.
+The main market indices are downloaded from Yahoo Finance. The Nasdaq-100
+total-return index and US three-month Treasury-bill yield are downloaded
+from FRED.
 
 Usage:
     python scripts/download_data.py --start 1970-01-01 --end 2024-01-01
@@ -17,6 +18,7 @@ import pandas as pd
 import yfinance as yf
 
 FRED_DTB3_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTB3"
+NASDAQ_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=NASDAQXNDX"
 
 TICKERS = {
     "SPX": "^GSPC",
@@ -83,6 +85,32 @@ def download_risk_free_rate(
     return rates
 
 
+def download_nasdaq_total_return(
+    start: str,
+    end: str,
+) -> pd.DataFrame:
+    """Download the Nasdaq-100 total-return index from FRED."""
+
+    data = pd.read_csv(
+        NASDAQ_URL,
+        parse_dates=["observation_date"],
+        na_values=".",
+    )
+
+    data = (
+        data.rename(
+            columns={
+                "observation_date": "date",
+                "NASDAQXNDX": "total_return_index",
+            }
+        )
+        .set_index("date")
+        .sort_index()
+    )
+
+    return data.loc[start:end].dropna()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=Path("data"))
@@ -99,6 +127,16 @@ def main() -> None:
     risk_free.to_parquet(risk_free_path)
 
     print(f"Saved risk-free rates to {risk_free_path}")
+
+    nasdaq = download_nasdaq_total_return(
+        start=args.start,
+        end=args.end,
+    )
+
+    nasdaq_path = args.out / "nasdaq100_tr.parquet"
+    nasdaq.to_parquet(nasdaq_path)
+
+    print(f"Saved Nasdaq-100 total returns to {nasdaq_path}")
 
 
 if __name__ == "__main__":
